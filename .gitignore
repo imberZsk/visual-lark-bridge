@@ -1,0 +1,35 @@
+# 本机配置与敏感信息
+.env
+.env.*
+!.env.example
+*.local
+
+# 运行状态、日志与用户数据
+logs/
+attachments/
+claude-workspace/tasks-state.json
+claude-workspace/cards-state.json
+*.log
+*.pid
+
+# Python 产物
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node 产物
+node_modules/
+coverage/
+npm-debug.log*
+
+# 系统与编辑器文件
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
