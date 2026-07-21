@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你改进 Lark Claude Bridge。提交改动时请保持飞书事件处理、Claude 会话和本机凭证之间的边界清晰。
+感谢你改进 Lark AI Bridge。提交改动时请保持飞书事件处理、AI 会话和本机凭证之间的边界清晰。
 
 ## 开发环境
 
@@ -17,7 +17,7 @@ PYTHONPATH=. python3 -m unittest discover -s tests
 ```bash
 bash -n run.sh install-launch-agent.sh
 PYTHONPATH=. python3 -m unittest discover -s tests
-python3 -m py_compile lark_claude_bridge.py
+python3 -m py_compile lark_ai_bridge.py
 node --check lark_event_gateway.cjs
 npm test --if-present
 ```

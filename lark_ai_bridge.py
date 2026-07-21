@@ -22,6 +22,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
+from runtime_paths import encode_claude_project_path
+
 
 def default_base_dir() -> Path:
     """返回脚本所在目录，确保移动目录后默认日志和工作目录同步迁移。"""
@@ -46,7 +48,7 @@ DEFAULT_LARK_CONFIG = Path(
     )
 ).expanduser()
 # DEFAULT_LARK_PROFILE_NAME 存储开源安装时建议使用的独立 profile 名称。
-DEFAULT_LARK_PROFILE_NAME = "lark-claude-bridge"
+DEFAULT_LARK_PROFILE_NAME = "lark-ai-bridge"
 # DEFAULT_LARK_PROFILE 存储 .env 指定的飞书机器人 profile，避免代码绑定开发者个人 App ID。
 DEFAULT_LARK_PROFILE = os.environ.get("LARK_PROFILE", DEFAULT_LARK_PROFILE_NAME).strip() or DEFAULT_LARK_PROFILE_NAME
 # DEFAULT_SYSTEM_PROMPT 约束 Claude 输出为适合飞书消息的中文短答。
@@ -160,10 +162,8 @@ def parse_iso_timestamp(value: str) -> float:
 
 def project_log_dir_for_cwd(cwd: Path) -> Path:
     """根据 Claude Code 的项目路径编码规则计算本工作目录对应的日志目录。"""
-    # absolute_cwd 是解析软链后的绝对工作目录。
-    absolute_cwd = cwd.resolve()
-    # encoded_cwd 是 Claude Code 用于 ~/.claude/projects 子目录的路径编码。
-    encoded_cwd = str(absolute_cwd).replace("/", "-")
+    # encoded_cwd 存储与 Claude Code 本地索引完全一致的 workspace 编码目录名。
+    encoded_cwd = encode_claude_project_path(cwd)
     return Path.home() / ".claude" / "projects" / encoded_cwd
 
 
@@ -457,7 +457,7 @@ def should_show_processing_placeholder(text: str) -> bool:
 def workspace_instruction_text() -> str:
     """返回写给 Claude 工作区的飞书桥接上下文说明。"""
     return (
-        "# 飞书 Claude Bridge 工作说明\n\n"
+        "# 飞书 AI Bridge 工作说明\n\n"
         "这是飞书对话接入的本地 Claude Code 工作区。用户在飞书里说话可能比较口语化，"
         "请先确认请求目标和当前工作区上下文，再执行本机操作。\n\n"
         "协作原则：\n"

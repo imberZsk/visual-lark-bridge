@@ -6,15 +6,29 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # SOURCE_ENV_FILE 存储仅在本机存在的桥接配置，安装时复制到运行目录但绝不提交 Git。
 SOURCE_ENV_FILE="$SOURCE_DIR/.env"
 # SERVICE_LABEL 存储 launchd 服务的唯一标识。
-SERVICE_LABEL="com.imber.lark-claude-bridge"
+SERVICE_LABEL="com.imber.lark-ai-bridge"
+# LEGACY_SERVICE_LABEL 存储改名前的 launchd 标识，用于迁移时停止旧服务。
+LEGACY_SERVICE_LABEL="com.imber.lark-claude-bridge"
 # INSTALL_DIR 存储后台服务的运行副本，避开 macOS 对 Desktop 的隐私限制。
-INSTALL_DIR="$HOME/Library/Application Support/lark-claude-bridge"
+INSTALL_DIR="$HOME/Library/Application Support/lark-ai-bridge"
+# LEGACY_INSTALL_DIR 存储改名前的运行目录，首次安装时从这里迁移用户数据。
+LEGACY_INSTALL_DIR="$HOME/Library/Application Support/lark-claude-bridge"
+# CLAUDE_PROJECTS_DIR 存储 Claude Code 按 workspace 隔离的会话目录根路径。
+CLAUDE_PROJECTS_DIR="$HOME/.claude/projects"
 # LAUNCH_AGENT_DIR 存储当前用户的 LaunchAgent 配置目录。
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 # PLIST_PATH 存储本服务的 LaunchAgent 配置文件路径。
 PLIST_PATH="$LAUNCH_AGENT_DIR/$SERVICE_LABEL.plist"
+# LEGACY_PLIST_PATH 存储旧 LaunchAgent 配置，确认新服务启动后再删除。
+LEGACY_PLIST_PATH="$LAUNCH_AGENT_DIR/$LEGACY_SERVICE_LABEL.plist"
 # USER_DOMAIN 存储当前登录用户对应的 launchd 域。
 USER_DOMAIN="gui/$(id -u)"
+
+# 品牌改名前的安装只在旧运行目录保存 `.env`；自动复制可避免迁移时要求用户重新录入配置。
+if [[ ! -f "$SOURCE_ENV_FILE" && -f "$LEGACY_INSTALL_DIR/.env" ]]; then
+  cp "$LEGACY_INSTALL_DIR/.env" "$SOURCE_ENV_FILE"
+  chmod 0600 "$SOURCE_ENV_FILE"
+fi
 
 if [[ ! -f "$SOURCE_ENV_FILE" ]]; then
   printf '缺少本机配置：%s\n请复制 .env.example 为 .env 后填写自己的飞书应用配置。\n' "$SOURCE_ENV_FILE" >&2
@@ -80,14 +94,28 @@ PYTHON_BIN_DIR="$(dirname "$PYTHON_BIN")"
 SERVICE_PATH="$CLAUDE_BIN_DIR:$LARK_CLI_BIN_DIR:$PYTHON_BIN_DIR:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 mkdir -p "$INSTALL_DIR/logs" "$INSTALL_DIR/claude-workspace" "$LAUNCH_AGENT_DIR"
-install -m 0755 "$SOURCE_DIR/lark_claude_bridge.py" "$INSTALL_DIR/lark_claude_bridge.py"
+install -m 0755 "$SOURCE_DIR/lark_ai_bridge.py" "$INSTALL_DIR/lark_ai_bridge.py"
 install -m 0755 "$SOURCE_DIR/lark_event_gateway.cjs" "$INSTALL_DIR/lark_event_gateway.cjs"
+install -m 0755 "$SOURCE_DIR/migrate_legacy_runtime.py" "$INSTALL_DIR/migrate_legacy_runtime.py"
+install -m 0644 "$SOURCE_DIR/runtime_paths.py" "$INSTALL_DIR/runtime_paths.py"
 install -m 0755 "$SOURCE_DIR/run.sh" "$INSTALL_DIR/run.sh"
 install -m 0600 "$SOURCE_ENV_FILE" "$INSTALL_DIR/.env"
 install -m 0644 "$SOURCE_DIR/package.json" "$INSTALL_DIR/package.json"
 install -m 0644 "$SOURCE_DIR/package-lock.json" "$INSTALL_DIR/package-lock.json"
 # 官方 SDK 用单条长连接同时注册消息与卡片回调，避免 lark-cli 总线漏注册后产生 200671。
 npm ci --omit=dev --ignore-scripts --prefix "$INSTALL_DIR"
+
+# 先停止新旧两个消费者再复制状态，避免迁移期间任务或卡片映射继续写入旧目录。
+launchctl bootout "$USER_DOMAIN/$SERVICE_LABEL" 2>/dev/null || true
+launchctl bootout "$USER_DOMAIN/$LEGACY_SERVICE_LABEL" 2>/dev/null || true
+
+# 品牌改名会改变运行路径和 Claude session 的 workspace 索引，必须同时迁移两处数据才能续接旧任务。
+if [[ -d "$LEGACY_INSTALL_DIR" && ! -e "$INSTALL_DIR/.legacy-runtime-migrated" ]]; then
+  python3 "$INSTALL_DIR/migrate_legacy_runtime.py" \
+    --legacy-install-dir "$LEGACY_INSTALL_DIR" \
+    --target-install-dir "$INSTALL_DIR" \
+    --claude-projects-dir "$CLAUDE_PROJECTS_DIR"
+fi
 
 # 首次安装时迁移现有状态，避免切换运行目录后丢失任务列表和 Claude 工作区。
 if [[ ! -e "$INSTALL_DIR/.runtime-initialized" ]]; then
@@ -137,13 +165,14 @@ cat >"$PLIST_PATH" <<PLIST
 PLIST
 
 plutil -lint "$PLIST_PATH"
-launchctl bootout "$USER_DOMAIN/$SERVICE_LABEL" 2>/dev/null || true
 # 旧版 lark-cli 事件总线会在消费者退出后继续存活 30 秒，部署新网关前主动优雅关闭。
 lark-cli event stop --app-id "$LARK_APP_ID" --force >/dev/null 2>&1 || true
 # 旧 launchd 日志可能来自 Desktop 方案，重新安装时清空以便准确判断本次启动结果。
 : >"$INSTALL_DIR/logs/launchd.out.log"
 : >"$INSTALL_DIR/logs/launchd.err.log"
 bootstrap_launch_agent "$USER_DOMAIN" "$PLIST_PATH"
+# 新服务成功启动后才删除旧 plist，保留旧运行目录作为迁移回滚依据。
+rm -f "$LEGACY_PLIST_PATH"
 
 printf '已安装并启动：%s\n' "$SERVICE_LABEL"
 printf '运行目录：%s\n' "$INSTALL_DIR"

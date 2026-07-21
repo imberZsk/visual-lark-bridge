@@ -10,7 +10,7 @@ from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
 
-from lark_claude_bridge import (
+from lark_ai_bridge import (
     BotCommand,
     BridgeApp,
     ClaudeInteractiveSession,
@@ -180,7 +180,7 @@ class LarkClaudeBridgeTest(unittest.TestCase):
         child_env = {**os.environ, "LARK_PROFILE": "test-open-source-profile"}
         # completed 存储子进程导入模块后输出的默认 profile。
         completed = subprocess.run(
-            ["python3", "-c", "import lark_claude_bridge; print(lark_claude_bridge.DEFAULT_LARK_PROFILE)"],
+            ["python3", "-c", "import lark_ai_bridge; print(lark_ai_bridge.DEFAULT_LARK_PROFILE)"],
             cwd=module_dir,
             env=child_env,
             text=True,
@@ -964,9 +964,9 @@ class LarkClaudeBridgeTest(unittest.TestCase):
         self.assertIn(("om_processing", "回复:请做一个长任务"), app.updated_messages)
 
     def test_project_log_dir_for_cwd_matches_claude_path_encoding(self):
-        """Claude 项目日志目录应按绝对路径里的斜杠替换为短横线。"""
+        """Claude 项目日志目录应按真实规则编码绝对路径中的斜杠与空格。"""
         # workspace_path 存储不包含开发者个人信息的模拟工作区绝对路径。
-        workspace_path = Path("/Users/example/projects/lark-claude-bridge/claude-workspace")
+        workspace_path = Path("/Users/example/Library/Application Support/lark-ai-bridge/claude-workspace")
         # log_dir 存储 Claude 对模拟工作区编码后的项目日志目录。
         log_dir = project_log_dir_for_cwd(workspace_path)
 
@@ -975,7 +975,7 @@ class LarkClaudeBridgeTest(unittest.TestCase):
             Path.home()
             / ".claude"
             / "projects"
-            / "-Users-example-projects-lark-claude-bridge-claude-workspace",
+            / "-Users-example-Library-Application-Support-lark-ai-bridge-claude-workspace",
         )
 
     def test_should_accept_trust_prompt_detects_compact_tui_text(self):
@@ -1251,7 +1251,7 @@ class LarkClaudeBridgeTest(unittest.TestCase):
                 return "新回答终稿"
 
             with (
-                mock.patch("lark_claude_bridge.STREAM_MIN_INTERVAL", 0),
+                mock.patch("lark_ai_bridge.STREAM_MIN_INTERVAL", 0),
                 mock.patch.object(app, "_stream_card_content", side_effect=record_stream),
                 mock.patch.object(app, "_replace_card_element", return_value=True) as replace_element,
                 mock.patch.object(app.task_manager, "ask_task", side_effect=answer_with_delta),

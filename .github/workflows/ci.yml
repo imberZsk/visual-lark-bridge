@@ -39,7 +39,7 @@ jobs:
         run: PYTHONPATH=. python3 -m unittest discover -s tests
 
       - name: Check Python syntax
-        run: python3 -m py_compile lark_claude_bridge.py
+        run: python3 -m py_compile lark_ai_bridge.py
 
       - name: Check Node.js syntax
         run: node --check lark_event_gateway.cjs

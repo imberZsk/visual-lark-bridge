@@ -1,4 +1,4 @@
-# lark-claude-bridge
+# Lark AI Bridge
 
 桥接通过 Claude Code 的 stream-json 接口实时接收思考、工具状态和正文 token，并持续更新飞书流式卡片。卡片创建后会先显示“AI思考中...”，不会在首个 token 到达前出现空白。
 
@@ -16,7 +16,7 @@
 
 ## 安全与开源
 
-项目采用 [MIT License](./LICENSE)。真实 `.env`、日志、附件、Claude 会话和本机工作区配置不得提交；详细边界见 [`SECURITY.md`](./SECURITY.md)，参与开发前请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
+项目采用 [MIT License](./LICENSE)。真实 `.env`、日志、附件、AI 会话和本机工作区配置不得提交；详细边界见 [`SECURITY.md`](./SECURITY.md)，参与开发前请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。
 
 ## macOS 开机自启
 
@@ -34,18 +34,18 @@ cp .env.example .env
 ./install-launch-agent.sh
 ```
 
-安装脚本会把运行副本、本机 `.env` 和首次安装时的任务状态迁移到 `~/Library/Application Support/lark-claude-bridge`。运行目录中的 `.env` 权限为 `0600`，LaunchAgent 通过 `run.sh` 加载它，不会把配置值展开写入 plist。后台服务不再访问 Desktop，因此无需给 Python 开启“完整磁盘访问权限”。以后源码有更新时，重新运行安装脚本即可同步程序，运行目录里的任务状态和日志会保留。
+安装脚本会把运行副本、本机 `.env` 和首次安装时的任务状态迁移到 `~/Library/Application Support/lark-ai-bridge`。如果检测到旧版 `lark-claude-bridge`，还会迁移任务、日志、附件、个性化工作区和 Claude 会话。运行目录中的 `.env` 权限为 `0600`，LaunchAgent 通过 `run.sh` 加载它，不会把配置值展开写入 plist。后台服务不再访问 Desktop，因此无需给 Python 开启“完整磁盘访问权限”。以后源码有更新时，重新运行安装脚本即可同步程序，运行目录里的任务状态和日志会保留。
 
 常用命令：
 
 ```bash
 # 查看服务状态
-launchctl print gui/$(id -u)/com.imber.lark-claude-bridge
+launchctl print gui/$(id -u)/com.imber.lark-ai-bridge
 
 # 查看桥接日志
-tail -f "$HOME/Library/Application Support/lark-claude-bridge/logs/bridge.log"
+tail -f "$HOME/Library/Application Support/lark-ai-bridge/logs/bridge.log"
 
 # 停止并取消自启
-launchctl bootout gui/$(id -u)/com.imber.lark-claude-bridge
-rm "$HOME/Library/LaunchAgents/com.imber.lark-claude-bridge.plist"
+launchctl bootout gui/$(id -u)/com.imber.lark-ai-bridge
+rm "$HOME/Library/LaunchAgents/com.imber.lark-ai-bridge.plist"
 ```

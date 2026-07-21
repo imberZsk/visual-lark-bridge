@@ -1,8 +1,8 @@
 {
-  "name": "lark-claude-bridge-events",
+  "name": "lark-ai-bridge",
   "private": true,
   "version": "1.0.0",
-  "description": "Single WebSocket event gateway for the local Lark Claude bridge",
+  "description": "Bridge Lark and Feishu messages to local AI coding agents",
   "dependencies": {
     "@larksuiteoapi/node-sdk": "1.71.1"
   }

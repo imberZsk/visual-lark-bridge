@@ -17,4 +17,4 @@ set -a
 source "$ENV_FILE"
 set +a
 
-exec python3 "$SCRIPT_DIR/lark_claude_bridge.py" "$@"
+exec python3 "$SCRIPT_DIR/lark_ai_bridge.py" "$@"
