@@ -12,10 +12,7 @@ interface LogsPanelProps {
 export function LogsPanel({ logs, loading, onRefresh }: LogsPanelProps) {
   return (
     <section className="panel logs-panel">
-      <div className="section-heading">
-        <div>
-          <h2>运行日志</h2>
-        </div>
+      <div className="panel-actions">
         <Button icon={<ReloadOutlined />} onClick={onRefresh}>
           刷新
         </Button>

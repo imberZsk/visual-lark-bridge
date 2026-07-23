@@ -157,9 +157,9 @@ input {
 .page-header {
   display: flex;
   align-items: center;
-  max-width: 880px;
+  width: min(100%, 980px);
   height: 48px;
-  margin: 0 auto;
+  margin: 0;
 }
 
 .page-header h1 {
@@ -168,15 +168,10 @@ input {
   font-weight: 650;
 }
 
-.content-stack {
-  display: grid;
-  gap: 10px;
-}
-
 .panel {
-  max-width: 880px;
-  margin: 0 auto;
-  padding: 15px 16px;
+  width: min(100%, 980px);
+  margin: 0;
+  padding: 18px 20px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--panel-bg);
@@ -217,9 +212,18 @@ input {
   padding-bottom: 7px;
 }
 
-.service-panel .ant-descriptions {
+.service-overview .ant-descriptions {
   padding-top: 12px;
   border-top: 1px solid var(--border-soft);
+}
+
+.service-page > .ant-divider {
+  margin: 16px 0;
+  border-color: var(--border-soft);
+}
+
+.diagnostics-panel .section-heading {
+  margin-bottom: 10px;
 }
 
 .form-grid {
@@ -238,6 +242,14 @@ input {
   justify-content: space-between;
   padding-top: 12px;
   border-top: 1px solid var(--border-soft);
+}
+
+.setting-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 .diagnostics-list {
@@ -260,6 +272,12 @@ input {
     Menlo,
     monospace;
   white-space: pre-wrap;
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
 }
 
 .boot-screen {

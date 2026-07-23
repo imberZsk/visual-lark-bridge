@@ -31,7 +31,7 @@ export function DiagnosticsPanel(props: DiagnosticsPanelProps) {
     .filter(([, toolPath]) => !toolPath)
     .map(([name]) => name);
   return (
-    <section className="panel">
+    <div className="diagnostics-panel">
       <div className="section-heading">
         <div>
           <h2>本机诊断</h2>
@@ -60,7 +60,7 @@ export function DiagnosticsPanel(props: DiagnosticsPanelProps) {
           }
         />
       )}
-      <Descriptions column={1} size="small" className="diagnostics-list">
+      <Descriptions column={2} size="small" className="diagnostics-list">
         {Object.entries(props.snapshot.tools).map(([name, toolPath]) => (
           <Descriptions.Item key={name} label={name}>
             <Tag color={toolPath ? "success" : "error"}>
@@ -68,7 +68,7 @@ export function DiagnosticsPanel(props: DiagnosticsPanelProps) {
             </Tag>
           </Descriptions.Item>
         ))}
-        <Descriptions.Item label="数据目录">
+        <Descriptions.Item label="数据目录" span={2}>
           {props.snapshot.userDataPath}
         </Descriptions.Item>
         <Descriptions.Item label="登录时启动">
@@ -96,6 +96,6 @@ export function DiagnosticsPanel(props: DiagnosticsPanelProps) {
           </Tooltip>
         </Popconfirm>
       </Space>
-    </section>
+    </div>
   );
 }

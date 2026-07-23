@@ -146,6 +146,31 @@ async function bootstrap() {
         check();
       })
     `);
+    /** requestedView 存储冒烟截图需要打开的页面。 */
+    const requestedView = process.env.LARK_BRIDGE_SMOKE_VIEW;
+    if (requestedView === "settings" || requestedView === "logs") {
+      /** viewIndex 存储目标页面在侧栏菜单中的位置。 */
+      const viewIndex = requestedView === "settings" ? 1 : 2;
+      /** viewSelector 存储用于确认目标页面完成渲染的选择器。 */
+      const viewSelector =
+        requestedView === "settings" ? ".settings-panel" : ".logs-panel";
+      await mainWindow.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+          // menuItems 存储侧栏中的页面导航项。
+          const menuItems = document.querySelectorAll('.ant-menu-item');
+          menuItems[${viewIndex}]?.click();
+          // deadline 存储等待目标页面渲染的截止时间。
+          const deadline = Date.now() + 3000;
+          // check 持续确认目标页面是否已经出现。
+          const check = () => {
+            if (document.querySelector(${JSON.stringify(viewSelector)})) return resolve(true);
+            if (Date.now() >= deadline) return resolve(false);
+            setTimeout(check, 100);
+          };
+          check();
+        })
+      `);
+    }
     /** requestedTheme 存储冒烟截图需要切换到的外观模式。 */
     const requestedTheme = process.env.LARK_BRIDGE_SMOKE_THEME;
     if (requestedTheme === "light" || requestedTheme === "dark") {

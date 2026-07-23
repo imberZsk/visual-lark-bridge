@@ -38,7 +38,7 @@ export function ServiceOverview({
       ? "error"
       : "default";
   return (
-    <section className="panel service-panel">
+    <div className="service-overview">
       <div className="section-heading">
         <div>
           <h2>桥接服务</h2>
@@ -86,6 +86,6 @@ export function ServiceOverview({
         </Descriptions.Item>
         <Descriptions.Item label="版本">v{snapshot.version}</Descriptions.Item>
       </Descriptions>
-    </section>
+    </div>
   );
 }

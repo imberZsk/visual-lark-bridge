@@ -12,12 +12,7 @@ interface SettingsPanelProps {
 /** SettingsPanel 编辑桥接运行配置，不接触飞书 App Secret。 */
 export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
   return (
-    <section className="panel">
-      <div className="section-heading">
-        <div>
-          <h2>连接设置</h2>
-        </div>
-      </div>
+    <section className="panel settings-panel">
       <Form<BridgeConfig>
         layout="vertical"
         initialValues={config}
@@ -43,12 +38,12 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
           </Form.Item>
         </div>
         <div className="form-footer">
-          <Form.Item name="autoStartBridge" valuePropName="checked" noStyle>
-            <Switch
-              checkedChildren="登录后启动桥接"
-              unCheckedChildren="登录后不启动"
-            />
-          </Form.Item>
+          <div className="setting-toggle">
+            <span>登录时启动桥接</span>
+            <Form.Item name="autoStartBridge" valuePropName="checked" noStyle>
+              <Switch />
+            </Form.Item>
+          </div>
           <Button
             htmlType="submit"
             type="primary"

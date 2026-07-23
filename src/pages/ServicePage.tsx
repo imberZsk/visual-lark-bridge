@@ -15,10 +15,10 @@ interface ServicePageProps {
   onClearRuntime(): void;
 }
 
-/** ServicePage 组合服务状态和本机诊断两个独立面板。 */
+/** ServicePage 在单一工作区中组合服务状态和本机诊断。 */
 export function ServicePage(props: ServicePageProps) {
   return (
-    <div className="content-stack">
+    <section className="panel service-page service-panel">
       <ServiceOverview
         snapshot={props.snapshot}
         busy={props.busy}
@@ -26,6 +26,7 @@ export function ServicePage(props: ServicePageProps) {
         onStop={props.onStop}
         onRestart={props.onRestart}
       />
+      <Divider />
       <DiagnosticsPanel
         snapshot={props.snapshot}
         onAutoStart={props.onAutoStart}
@@ -33,6 +34,7 @@ export function ServicePage(props: ServicePageProps) {
         onDisableLegacy={props.onDisableLegacy}
         onClearRuntime={props.onClearRuntime}
       />
-    </div>
+    </section>
   );
 }
+import { Divider } from "antd";

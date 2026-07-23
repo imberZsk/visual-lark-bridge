@@ -33,6 +33,7 @@ build/pyinstaller/
 build/specs/
 build/smoke-ui.png
 build/smoke-*.png
+build/review-*.png
 coverage/
 npm-debug.log*
 
