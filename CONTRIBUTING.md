@@ -4,11 +4,11 @@
 
 ## 开发环境
 
-需要 Python 3.10 或更高版本、Node.js 20 或更高版本，以及本机可用的 `claude` 和 `lark-cli`。
+需要 Python 3.10 或更高版本，以及本机可用的 `claude` 和 `lark-cli`。
 
 ```bash
 cp .env.example .env
-npm ci
+python3 -m pip install -r requirements.txt
 PYTHONPATH=. python3 -m unittest discover -s tests
 ```
 
@@ -17,9 +17,7 @@ PYTHONPATH=. python3 -m unittest discover -s tests
 ```bash
 bash -n run.sh install-launch-agent.sh
 PYTHONPATH=. python3 -m unittest discover -s tests
-python3 -m py_compile lark_claude_bridge.py
-node --check lark_event_gateway.cjs
-npm test --if-present
+python3 -m compileall -q lark_claude_bridge.py lark_bridge tests
 ```
 
 如果安装了 ShellCheck，还应执行：

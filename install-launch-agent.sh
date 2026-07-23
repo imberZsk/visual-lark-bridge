@@ -45,8 +45,6 @@ require_command() {
 require_command python3
 require_command claude
 require_command lark-cli
-require_command node
-require_command npm
 
 # bootstrap_launch_agent 加载用户服务；第一个参数是 launchd 用户域，第二个参数是 plist 路径。
 bootstrap_launch_agent() {
@@ -81,13 +79,19 @@ SERVICE_PATH="$CLAUDE_BIN_DIR:$LARK_CLI_BIN_DIR:$PYTHON_BIN_DIR:/opt/homebrew/bi
 
 mkdir -p "$INSTALL_DIR/logs" "$INSTALL_DIR/claude-workspace" "$LAUNCH_AGENT_DIR"
 install -m 0755 "$SOURCE_DIR/lark_claude_bridge.py" "$INSTALL_DIR/lark_claude_bridge.py"
-install -m 0755 "$SOURCE_DIR/lark_event_gateway.cjs" "$INSTALL_DIR/lark_event_gateway.cjs"
+# 重建业务包副本，避免模块删除或重命名后运行目录残留旧实现。
+rm -rf "$INSTALL_DIR/lark_bridge"
+mkdir -p "$INSTALL_DIR/lark_bridge"
+# module_path 依次保存需要部署的 Python 业务模块路径。
+for module_path in "$SOURCE_DIR"/lark_bridge/*.py; do
+  install -m 0644 "$module_path" "$INSTALL_DIR/lark_bridge/$(basename "$module_path")"
+done
 install -m 0755 "$SOURCE_DIR/run.sh" "$INSTALL_DIR/run.sh"
 install -m 0600 "$SOURCE_ENV_FILE" "$INSTALL_DIR/.env"
-install -m 0644 "$SOURCE_DIR/package.json" "$INSTALL_DIR/package.json"
-install -m 0644 "$SOURCE_DIR/package-lock.json" "$INSTALL_DIR/package-lock.json"
-# 官方 SDK 用单条长连接同时注册消息与卡片回调，避免 lark-cli 总线漏注册后产生 200671。
-npm ci --omit=dev --ignore-scripts --prefix "$INSTALL_DIR"
+install -m 0644 "$SOURCE_DIR/requirements.txt" "$INSTALL_DIR/requirements.txt"
+# vendor 存储固定版本 Python SDK，避免修改系统 Python 环境并确保 launchd 能稳定导入依赖。
+rm -rf "$INSTALL_DIR/vendor"
+python3 -m pip install --disable-pip-version-check --target "$INSTALL_DIR/vendor" -r "$INSTALL_DIR/requirements.txt"
 
 # 首次安装时迁移现有状态，避免切换运行目录后丢失任务列表和 Claude 工作区。
 if [[ ! -e "$INSTALL_DIR/.runtime-initialized" ]]; then

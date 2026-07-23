@@ -23,14 +23,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - name: Install Node.js dependencies
-        run: npm ci --ignore-scripts
+      - name: Install Python dependencies
+        run: python3 -m pip install -r requirements.txt
 
       - name: Check shell syntax
         run: bash -n run.sh install-launch-agent.sh
@@ -39,7 +33,4 @@ jobs:
         run: PYTHONPATH=. python3 -m unittest discover -s tests
 
       - name: Check Python syntax
-        run: python3 -m py_compile lark_claude_bridge.py
-
-      - name: Check Node.js syntax
-        run: node --check lark_event_gateway.cjs
+        run: python3 -m compileall -q lark_claude_bridge.py lark_bridge tests

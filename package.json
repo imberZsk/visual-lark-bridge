@@ -1,9 +1,0 @@
-{
-  "name": "lark-claude-bridge-events",
-  "private": true,
-  "version": "1.0.0",
-  "description": "Single WebSocket event gateway for the local Lark Claude bridge",
-  "dependencies": {
-    "@larksuiteoapi/node-sdk": "1.71.1"
-  }
-}
