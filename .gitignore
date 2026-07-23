@@ -32,6 +32,7 @@ build/icon-preview/
 build/pyinstaller/
 build/specs/
 build/smoke-ui.png
+build/smoke-*.png
 coverage/
 npm-debug.log*
 

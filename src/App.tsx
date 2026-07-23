@@ -1,164 +1,77 @@
-import { useEffect, useState } from "react";
-import { App as AntApp, ConfigProvider, Layout, Menu, message } from "antd";
+import { useState } from "react";
 import {
-  ApiOutlined,
-  FileTextOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
+  App as AntApp,
+  ConfigProvider,
+  Layout,
+  Spin,
+  theme as antdTheme,
+} from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
-import { LogsPanel } from "./components/LogsPanel";
-import { ServiceOverview } from "./components/ServiceOverview";
-import { SettingsPanel } from "./components/SettingsPanel";
-import type {
-  BridgeConfig,
-  BridgeSnapshot,
-  ServiceStatus,
-} from "./types/bridge";
+import { useBridgeController } from "./hooks/useBridgeController";
+import { AppSidebar, type ViewKey } from "./layout/AppSidebar";
+import { PageHeader } from "./layout/PageHeader";
+import { LogsPage } from "./pages/LogsPage";
+import { ServicePage } from "./pages/ServicePage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { useThemeMode, type ThemeMode } from "./theme/useThemeMode";
 
-/** NAV_ITEMS 存储控制台侧栏的固定页面。 */
-const NAV_ITEMS = [
-  { key: "service", icon: <ApiOutlined />, label: "服务" },
-  { key: "settings", icon: <SettingOutlined />, label: "设置" },
-  { key: "logs", icon: <FileTextOutlined />, label: "日志" },
-];
+/** BridgeConsoleProps 描述控制台外观状态。 */
+interface BridgeConsoleProps {
+  themeMode: ThemeMode;
+  onThemeChange(themeMode: ThemeMode): void;
+}
 
-/** BridgeConsole 实现桌面端控制台状态与交互。 */
-function BridgeConsole() {
-  /** snapshot 存储主进程返回的完整状态。 */
-  const [snapshot, setSnapshot] = useState<BridgeSnapshot | null>(null);
+/** BridgeConsole 负责页面选择并组合布局与业务页面。 */
+function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
+  /** controller 存储桥接业务状态和操作。 */
+  const controller = useBridgeController();
   /** activeView 存储当前侧栏页面。 */
-  const [activeView, setActiveView] = useState("service");
-  /** busy 存储服务操作是否正在执行。 */
-  const [busy, setBusy] = useState(false);
-  /** saving 存储配置保存是否正在执行。 */
-  const [saving, setSaving] = useState(false);
-  /** logs 存储当前展示的日志尾部。 */
-  const [logs, setLogs] = useState("");
-  /** logsLoading 存储日志读取状态。 */
-  const [logsLoading, setLogsLoading] = useState(false);
+  const [activeView, setActiveView] = useState<ViewKey>("service");
 
-  /** refreshSnapshot 从主进程刷新全部状态。 */
-  const refreshSnapshot = async () =>
-    setSnapshot(await window.larkBridge.getSnapshot());
-  /** updateService 只更新状态快照中的服务字段。 */
-  const updateService = (service: ServiceStatus) =>
-    setSnapshot((current) => (current ? { ...current, service } : current));
-  /** runServiceAction 执行服务操作并统一处理忙碌与错误状态。 */
-  const runServiceAction = async (action: () => Promise<ServiceStatus>) => {
-    setBusy(true);
-    try {
-      updateService(await action());
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setBusy(false);
-    }
-  };
-  /** saveConfig 持久化设置并同步登录启动选项。 */
-  const saveConfig = async (config: BridgeConfig) => {
-    setSaving(true);
-    try {
-      await window.larkBridge.saveConfig(config);
-      await window.larkBridge.setAutoStart(config.autoStartBridge);
-      await refreshSnapshot();
-      message.success("设置已保存");
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSaving(false);
-    }
-  };
-  /** refreshLogs 读取最新桥接日志。 */
-  const refreshLogs = async () => {
-    setLogsLoading(true);
-    try {
-      setLogs(await window.larkBridge.readLogs());
-    } finally {
-      setLogsLoading(false);
-    }
-  };
+  if (!controller.snapshot) {
+    return (
+      <div className="boot-screen">
+        <Spin size="small" />
+      </div>
+    );
+  }
 
-  useEffect(() => {
-    refreshSnapshot().catch((error) => message.error(String(error)));
-    /** unsubscribe 存储服务状态监听的清理函数。 */
-    const unsubscribe = window.larkBridge.onStateChanged(updateService);
-    return unsubscribe;
-  }, []);
-  useEffect(() => {
-    if (activeView === "logs") void refreshLogs();
-  }, [activeView]);
-
-  if (!snapshot) return <div className="boot-screen">正在读取本机状态...</div>;
   return (
     <Layout className="app-shell">
-      <Layout.Sider width={208} theme="light" className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">LA</div>
-          <div>
-            <strong>Lark AI Bridge</strong>
-            <span>本机桥接控制台</span>
-          </div>
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[activeView]}
-          items={NAV_ITEMS}
-          onClick={({ key }) => setActiveView(key)}
-        />
-        <div className="sidebar-status">
-          <span className={`status-dot ${snapshot.service.state}`} />
-          {snapshot.service.state === "running" ? "桥接运行中" : "桥接未运行"}
-        </div>
-      </Layout.Sider>
+      <AppSidebar
+        activeView={activeView}
+        serviceState={controller.snapshot.service.state}
+        themeMode={themeMode}
+        onViewChange={setActiveView}
+        onThemeChange={onThemeChange}
+      />
       <Layout.Content className="content">
-        <header className="page-header">
-          <h1>
-            {activeView === "service"
-              ? "服务控制"
-              : activeView === "settings"
-                ? "连接设置"
-                : "运行日志"}
-          </h1>
-        </header>
+        <PageHeader activeView={activeView} />
         {activeView === "service" && (
-          <div className="content-stack">
-            <ServiceOverview
-              snapshot={snapshot}
-              busy={busy}
-              onStart={() => runServiceAction(window.larkBridge.start)}
-              onStop={() => runServiceAction(window.larkBridge.stop)}
-              onRestart={() => runServiceAction(window.larkBridge.restart)}
-            />
-            <DiagnosticsPanel
-              snapshot={snapshot}
-              onAutoStart={async (enabled) => {
-                await window.larkBridge.setAutoStart(enabled);
-                await refreshSnapshot();
-              }}
-              onReveal={() => void window.larkBridge.revealData()}
-              onDisableLegacy={async () =>
-                setSnapshot(await window.larkBridge.disableLegacy())
-              }
-              onClearRuntime={async () =>
-                setSnapshot(await window.larkBridge.clearRuntime())
-              }
-            />
-          </div>
+          <ServicePage
+            snapshot={controller.snapshot}
+            busy={controller.serviceBusy}
+            onStart={controller.startService}
+            onStop={controller.stopService}
+            onRestart={controller.restartService}
+            onAutoStart={controller.setAutoStart}
+            onReveal={controller.revealData}
+            onDisableLegacy={controller.disableLegacy}
+            onClearRuntime={controller.clearRuntime}
+          />
         )}
         {activeView === "settings" && (
-          <SettingsPanel
-            key={JSON.stringify(snapshot.config)}
-            config={snapshot.config}
-            saving={saving}
-            onSave={saveConfig}
+          <SettingsPage
+            config={controller.snapshot.config}
+            saving={controller.settingsSaving}
+            onSave={controller.saveConfig}
           />
         )}
         {activeView === "logs" && (
-          <LogsPanel
-            logs={logs}
-            loading={logsLoading}
-            onRefresh={refreshLogs}
+          <LogsPage
+            logs={controller.logs}
+            loading={controller.logsLoading}
+            onRefresh={controller.refreshLogs}
           />
         )}
       </Layout.Content>
@@ -166,23 +79,51 @@ function BridgeConsole() {
   );
 }
 
-/** App 注入 Ant Design 中文语言与主题。 */
+/** App 注入 Ant Design 黑白主题、中文语言和紧凑尺寸。 */
 export default function App() {
+  /** themeMode 存储当前外观模式和更新方法。 */
+  const { themeMode, setThemeMode } = useThemeMode();
+  /** darkMode 标记当前是否使用深色模式。 */
+  const darkMode = themeMode === "dark";
   return (
     <ConfigProvider
       locale={zhCN}
+      componentSize="small"
       theme={{
+        algorithm: darkMode
+          ? antdTheme.darkAlgorithm
+          : antdTheme.defaultAlgorithm,
         token: {
-          colorPrimary: "#167a65",
-          borderRadius: 6,
-          colorBgLayout: "#f4f6f7",
+          colorPrimary: darkMode ? "#f0f0f0" : "#171717",
+          colorTextLightSolid: darkMode ? "#111111" : "#ffffff",
+          colorBgLayout: darkMode ? "#0f0f0f" : "#f5f5f5",
+          colorBgContainer: darkMode ? "#171717" : "#ffffff",
+          colorBorderSecondary: darkMode ? "#2c2c2c" : "#e4e4e4",
+          borderRadius: 4,
+          fontSize: 13,
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        },
+        components: {
+          Layout: {
+            bodyBg: darkMode ? "#0f0f0f" : "#f5f5f5",
+            siderBg: darkMode ? "#141414" : "#ffffff",
+          },
+          Menu: {
+            darkItemBg: "#141414",
+            darkItemSelectedBg: "#303030",
+            darkItemSelectedColor: "#ffffff",
+            itemSelectedBg: "#ededed",
+            itemSelectedColor: "#111111",
+            itemBorderRadius: 4,
+          },
+          Button: { borderRadius: 4 },
+          Input: { borderRadius: 4 },
         },
       }}
     >
       <AntApp>
-        <BridgeConsole />
+        <BridgeConsole themeMode={themeMode} onThemeChange={setThemeMode} />
       </AntApp>
     </ConfigProvider>
   );

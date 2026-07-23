@@ -146,6 +146,34 @@ async function bootstrap() {
         check();
       })
     `);
+    /** requestedTheme 存储冒烟截图需要切换到的外观模式。 */
+    const requestedTheme = process.env.LARK_BRIDGE_SMOKE_THEME;
+    if (requestedTheme === "light" || requestedTheme === "dark") {
+      await mainWindow.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+          // items 存储主题分段控件的两个可点击选项。
+          const items = document.querySelectorAll('.ant-segmented-item');
+          // targetIndex 存储目标主题对应的选项位置。
+          const targetIndex = ${JSON.stringify(requestedTheme)} === 'dark' ? 1 : 0;
+          items[targetIndex]?.click();
+          // deadline 存储等待主题稳定渲染的截止时间。
+          const deadline = Date.now() + 3000;
+          // stableChecks 存储主题和页面连续就绪的检查次数。
+          let stableChecks = 0;
+          const check = () => {
+            // themeReady 标记根节点主题是否已经更新。
+            const themeReady = document.documentElement.dataset.theme === ${JSON.stringify(requestedTheme)};
+            // contentReady 标记业务面板是否已经完成重绘。
+            const contentReady = Boolean(document.querySelector('.service-panel'));
+            stableChecks = themeReady && contentReady ? stableChecks + 1 : 0;
+            if (stableChecks >= 5) return resolve(true);
+            if (Date.now() >= deadline) return resolve(false);
+            setTimeout(check, 100);
+          };
+          check();
+        })
+      `);
+    }
     if (process.env.LARK_BRIDGE_SMOKE_SCREENSHOT) {
       /** screenshot 存储生产窗口的 PNG 截图。 */
       const screenshot = await mainWindow.webContents.capturePage();

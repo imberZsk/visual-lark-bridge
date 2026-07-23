@@ -1,6 +1,6 @@
 # Lark AI Bridge
 
-Lark AI Bridge 是飞书与本机 Claude Code 之间的桌面桥接工具。macOS 应用提供服务启动、停止、重启、登录自启、配置、依赖诊断、日志查看、旧 LaunchAgent 迁移和运行数据清理；桥接与飞书 WebSocket 网关均由 Python 实现并打包为独立 sidecar，普通用户不需要安装 Python。
+Lark AI Bridge 是飞书与本机 Claude Code 之间的桌面桥接工具。macOS 应用提供黑白模式、服务启动、停止、重启、登录自启、配置、依赖诊断、日志查看、旧 LaunchAgent 迁移和运行数据清理；桥接与飞书 WebSocket 网关均由 Python 实现并打包为独立 sidecar，普通用户不需要安装 Python。
 
 桥接通过 Claude Code 的 stream-json 接口实时接收思考、工具状态和正文 token，并持续更新飞书流式卡片。卡片创建后会先显示“AI思考中...”，不会在首个 token 到达前出现空白。
 
