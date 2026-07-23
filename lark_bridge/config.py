@@ -30,7 +30,7 @@ DEFAULT_LARK_CONFIG = Path(
     )
 ).expanduser()
 # DEFAULT_LARK_PROFILE_NAME 存储开源安装时建议使用的独立 profile 名称。
-DEFAULT_LARK_PROFILE_NAME = "lark-claude-bridge"
+DEFAULT_LARK_PROFILE_NAME = "lark-ai-bridge"
 # DEFAULT_LARK_PROFILE 存储 .env 指定的飞书机器人 profile，避免代码绑定开发者个人 App ID。
 DEFAULT_LARK_PROFILE = (
     os.environ.get("LARK_PROFILE", DEFAULT_LARK_PROFILE_NAME).strip()

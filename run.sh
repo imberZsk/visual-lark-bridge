@@ -24,4 +24,4 @@ if [[ -d "$VENDOR_DIR" ]]; then
   export PYTHONPATH="$VENDOR_DIR${PYTHONPATH:+:$PYTHONPATH}"
 fi
 
-exec python3 "$SCRIPT_DIR/lark_claude_bridge.py" "$@"
+exec python3 "$SCRIPT_DIR/lark_ai_bridge.py" "$@"

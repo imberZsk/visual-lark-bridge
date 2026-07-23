@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lark_claude_bridge import (
+from lark_ai_bridge import (
     BotCommand,
     DEFAULT_LARK_PROFILE,
     STREAM_CARD_SUMMARY_ID,
@@ -45,7 +45,7 @@ class CoreTest(unittest.TestCase):
             [
                 "python3",
                 "-c",
-                "import lark_claude_bridge; print(lark_claude_bridge.DEFAULT_LARK_PROFILE)",
+                "import lark_ai_bridge; print(lark_ai_bridge.DEFAULT_LARK_PROFILE)",
             ],
             cwd=module_dir,
             env=child_env,
@@ -173,6 +173,19 @@ class CoreTest(unittest.TestCase):
         self.assertEqual(args[1], str(gateway_path))
         self.assertIn(str(config_path), args)
         self.assertIn(DEFAULT_LARK_PROFILE, args)
+
+    def test_build_lark_gateway_args_runs_packaged_sidecar_directly(self):
+        """打包后的网关二进制应直接执行，不能再交给 Python 解释器。"""
+        # gateway_path 存储测试用独立网关可执行文件路径。
+        gateway_path = Path("/runtime/lark-event-gateway")
+        # config_path 存储测试用 lark-cli 配置路径。
+        config_path = Path("/home/user/.lark-cli/config.json")
+
+        # args 存储独立网关的启动命令。
+        args = build_lark_gateway_args(gateway_path, config_path, DEFAULT_LARK_PROFILE)
+
+        self.assertEqual(args[0], str(gateway_path))
+        self.assertNotIn(sys.executable, args)
 
     def test_build_lark_profile_list_args(self):
         """profile 预检应使用 lark-cli profile list 读取本机已配置机器人。"""

@@ -17,7 +17,7 @@ PYTHONPATH=. python3 -m unittest discover -s tests
 ```bash
 bash -n run.sh install-launch-agent.sh
 PYTHONPATH=. python3 -m unittest discover -s tests
-python3 -m compileall -q lark_claude_bridge.py lark_bridge tests
+python3 -m compileall -q lark_ai_bridge.py lark_bridge tests
 ```
 
 如果安装了 ShellCheck，还应执行：

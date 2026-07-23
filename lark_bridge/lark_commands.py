@@ -438,10 +438,15 @@ def build_lark_gateway_args(
     config_path: Path,
     profile: str,
 ) -> list[str]:
-    """构造官方 SDK 单长连接网关命令；gateway_path 是入口，config_path 提供应用凭据。"""
+    """构造官方 SDK 网关命令；gateway_path 可为 Python 脚本或独立可执行文件。"""
+    # gateway_command 存储脚本或打包 sidecar 对应的启动命令。
+    gateway_command = (
+        [sys.executable, str(gateway_path)]
+        if gateway_path.suffix == ".py"
+        else [str(gateway_path)]
+    )
     return [
-        sys.executable,
-        str(gateway_path),
+        *gateway_command,
         "--config",
         str(config_path),
         "--profile",

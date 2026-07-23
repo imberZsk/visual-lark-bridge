@@ -1,17 +1,8 @@
 #!/usr/bin/env python3
-"""兼容入口：业务实现已拆分到 lark_bridge 包。"""
+"""旧文件名兼容入口；新安装应使用 lark_ai_bridge.py。"""
 
-from lark_bridge.config import *
-from lark_bridge.models import *
-from lark_bridge.claude_logs import *
-from lark_bridge.messages import *
-from lark_bridge.claude_sessions import *
-from lark_bridge.task_manager import *
-from lark_bridge.lark_api import *
-from lark_bridge.claude_protocol import *
-from lark_bridge.consumers import *
-from lark_bridge.app import *
-from lark_bridge.cli import main
+from lark_ai_bridge import *
+from lark_ai_bridge import main
 
 
 if __name__ == "__main__":

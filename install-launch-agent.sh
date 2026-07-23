@@ -6,9 +6,9 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # SOURCE_ENV_FILE 存储仅在本机存在的桥接配置，安装时复制到运行目录但绝不提交 Git。
 SOURCE_ENV_FILE="$SOURCE_DIR/.env"
 # SERVICE_LABEL 存储 launchd 服务的唯一标识。
-SERVICE_LABEL="com.imber.lark-claude-bridge"
+SERVICE_LABEL="com.imber.lark-ai-bridge"
 # INSTALL_DIR 存储后台服务的运行副本，避开 macOS 对 Desktop 的隐私限制。
-INSTALL_DIR="$HOME/Library/Application Support/lark-claude-bridge"
+INSTALL_DIR="$HOME/Library/Application Support/lark-ai-bridge"
 # LAUNCH_AGENT_DIR 存储当前用户的 LaunchAgent 配置目录。
 LAUNCH_AGENT_DIR="$HOME/Library/LaunchAgents"
 # PLIST_PATH 存储本服务的 LaunchAgent 配置文件路径。
@@ -78,7 +78,7 @@ PYTHON_BIN_DIR="$(dirname "$PYTHON_BIN")"
 SERVICE_PATH="$CLAUDE_BIN_DIR:$LARK_CLI_BIN_DIR:$PYTHON_BIN_DIR:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 mkdir -p "$INSTALL_DIR/logs" "$INSTALL_DIR/claude-workspace" "$LAUNCH_AGENT_DIR"
-install -m 0755 "$SOURCE_DIR/lark_claude_bridge.py" "$INSTALL_DIR/lark_claude_bridge.py"
+install -m 0755 "$SOURCE_DIR/lark_ai_bridge.py" "$INSTALL_DIR/lark_ai_bridge.py"
 # 重建业务包副本，避免模块删除或重命名后运行目录残留旧实现。
 rm -rf "$INSTALL_DIR/lark_bridge"
 mkdir -p "$INSTALL_DIR/lark_bridge"
