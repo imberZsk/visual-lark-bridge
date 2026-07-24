@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m venv .venv
-          .venv/bin/pip install -r requirements.txt -r requirements-build.txt ruff
+          .venv/bin/pip install -r requirements.txt -r requirements-build.txt
           pnpm install --frozen-lockfile
 
       - name: Verify source and tests
