@@ -57,6 +57,8 @@ CARD_PREVIEW_LIMIT = 520
 CARD_HISTORY_PAGE_TURNS = 4
 # CARD_HISTORY_PAGE_LIMIT 存储单页对话正文的字符上限，避免长回答无限撑高卡片。
 CARD_HISTORY_PAGE_LIMIT = 4200
+# TASK_LIST_PAGE_SIZE 存储飞书任务中心每页展示的任务数量，避免任务过多时卡片无限变长。
+TASK_LIST_PAGE_SIZE = 5
 # CARD_SUBMIT_DEDUP_SECONDS 存储 Enter 与按钮重复回调的去重时间窗口。
 CARD_SUBMIT_DEDUP_SECONDS = 2.0
 # CARD_LAYOUT_VERSION 存储当前活动卡片结构版本，用于淘汰已折叠或已关闭流式模式的旧卡映射。

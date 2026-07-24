@@ -118,7 +118,9 @@ class CardBuilderTest(unittest.TestCase):
         self.assertEqual(columns[0]["elements"][0]["text"]["content"], "所有任务")
         self.assertEqual(columns[1]["elements"][0]["text"]["content"], "停止")
         self.assertEqual(columns[2]["elements"][0]["text"]["content"], "新任务")
-        self.assertTrue(all(column["elements"][0]["size"] == "small" for column in columns))
+        self.assertTrue(
+            all(column["elements"][0]["size"] == "small" for column in columns)
+        )
 
     def test_conversation_content_shows_history_and_current_turn(self):
         """卡片正文应同时显示之前的问答和正在处理的当前轮次。"""
@@ -159,8 +161,8 @@ class CardBuilderTest(unittest.TestCase):
         self.assertNotIn("问题9", content)
         self.assertIn("第 2/3 页", content)
 
-    def test_build_task_list_card_contains_management_actions(self):
-        """任务列表卡片应包含切换、停止、重命名和删除动作。"""
+    def test_build_task_list_card_keeps_management_actions_collapsed(self):
+        """任务中心默认只展示打开和管理，避免每个任务展开低频操作。"""
         with tempfile.TemporaryDirectory() as tmp:
             # manager 存储带一个默认任务的测试任务管理器。
             manager = ClaudeTaskManager(
@@ -181,10 +183,70 @@ class CardBuilderTest(unittest.TestCase):
             if element.get("tag") == "column_set"
             for column in element["columns"]
         ]
-        self.assertEqual(actions, ["task_use", "stop", "task_delete"])
-        self.assertTrue(
+        self.assertIn("task_use", actions)
+        self.assertIn("task_manage", actions)
+        self.assertNotIn("stop", actions)
+        self.assertNotIn("task_delete", actions)
+        self.assertFalse(
             any(element.get("tag") == "form" for element in card["body"]["elements"])
         )
+
+    def test_build_task_list_card_expands_only_selected_task_management(self):
+        """点击管理后只展开目标任务的重命名、停止和删除操作。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            # manager 存储带两个任务的测试任务管理器。
+            manager = ClaudeTaskManager(
+                workspace_root=Path(tmp) / "workspace",
+                log_dir=Path(tmp) / "logs",
+                system_prompt="测试提示",
+                timeout=5,
+                session_factory=FakeClaudeSession,
+            )
+            manager.create_task("ou_user", "任务一")
+            manager.create_task("ou_user", "任务二")
+            # card 存储仅展开 t1 管理区域的任务中心卡片。
+            card = build_task_list_card(
+                manager.tasks.values(), "t2", managed_task_id="t1"
+            )
+
+        # actions 存储展开后所有按钮动作名。
+        actions = [
+            column["elements"][0]["behaviors"][0]["value"]["action"]
+            for element in card["body"]["elements"]
+            if element.get("tag") == "column_set"
+            for column in element["columns"]
+        ]
+        self.assertEqual(actions.count("stop"), 1)
+        self.assertEqual(actions.count("task_delete"), 1)
+        self.assertEqual(
+            sum(element.get("tag") == "form" for element in card["body"]["elements"]),
+            1,
+        )
+
+    def test_build_task_list_card_paginates_large_task_collection(self):
+        """任务超过单页数量时仅渲染五项并提供翻页按钮。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            # manager 存储超过一页的模拟任务集合。
+            manager = ClaudeTaskManager(
+                workspace_root=Path(tmp) / "workspace",
+                log_dir=Path(tmp) / "logs",
+                system_prompt="测试提示",
+                timeout=5,
+                session_factory=FakeClaudeSession,
+            )
+            for index in range(7):
+                manager.create_task("ou_user", f"任务 {index + 1}")
+            # card 存储第一页任务中心卡片。
+            card = build_task_list_card(manager.tasks.values(), "t7")
+
+        # markdown_elements 存储当前页的任务摘要 Markdown 元素。
+        markdown_elements = [
+            element
+            for element in card["body"]["elements"]
+            if element.get("tag") == "markdown"
+        ]
+        self.assertEqual(len(markdown_elements), 5)
+        self.assertEqual(card["header"]["title"]["content"], "任务中心 · 7")
 
     def test_extract_card_id_reads_create_card_output(self):
         """应从建卡响应 JSON 里读取 data.card_id。"""

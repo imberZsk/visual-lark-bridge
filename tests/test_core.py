@@ -29,11 +29,22 @@ from visual_lark_bridge import (
     parse_bot_command,
     parse_lark_profile_names,
     should_show_processing_placeholder,
+    should_upgrade_task_title,
+    suggest_task_title,
     workspace_instruction_text,
 )
 
 
 class CoreTest(unittest.TestCase):
+    def test_task_title_uses_placeholder_for_greeting_then_upgrades(self):
+        """寒暄消息使用友好占位名，后续实质问题可触发自动升级。"""
+        self.assertEqual(suggest_task_title("你好", 3), "新对话 3")
+        self.assertTrue(should_upgrade_task_title("新对话 3"))
+        self.assertEqual(
+            suggest_task_title("帮我排查登录超时问题", 3), "帮我排查登录超时问题"
+        )
+        self.assertFalse(should_upgrade_task_title("登录超时排查"))
+
     def test_default_lark_profile_comes_from_environment(self):
         """模块默认 profile 应读取本机环境，避免发布代码绑定开发者个人 App ID。"""
         # module_dir 存储桥接模块所在目录，供隔离子进程导入当前待测代码。

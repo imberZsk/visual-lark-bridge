@@ -20,6 +20,8 @@ from .lark_commands import build_lark_create_custom_card_args
 from .lark_commands import build_lark_delayed_card_update_args
 from .lark_commands import extract_card_id
 from .messages import preview_text
+from .messages import should_upgrade_task_title
+from .messages import suggest_task_title
 from .models import LarkMessage
 import uuid
 
@@ -43,12 +45,14 @@ class BridgeActionMixin:
             return None
         return extract_card_id(completed.stdout)
 
-    def _send_task_list_card(self, message: LarkMessage) -> bool:
-        """回复交互式任务列表卡片，支持任务切换和管理。"""
+    def _send_task_list_card(self, message: LarkMessage, page: int = 0) -> bool:
+        """回复分页任务中心卡片；message 提供回复位置，page 指定页码。"""
         # current_id 存储当前发送者选中的任务 ID。
         current_id = self.task_manager.current_task_id_for_sender(message.sender_id)
         # card 存储当前任务快照对应的 Card 2.0 JSON。
-        card = build_task_list_card(self.task_manager.tasks.values(), current_id)
+        card = build_task_list_card(
+            self.task_manager.tasks.values(), current_id, page=page
+        )
         # card_id 存储创建成功的任务列表卡片实体 ID。
         card_id = self._create_custom_card(card)
         if card_id is None:
@@ -129,6 +133,10 @@ class BridgeActionMixin:
         action = str(action_value.get("action", ""))
         # task_id 存储按钮关联的 Claude 任务 ID。
         task_id = str(action_value.get("task_id", ""))
+        # action_surface 存储按钮所在界面，用于让任务中心操作后仍停留在任务中心。
+        action_surface = str(action_value.get("surface", ""))
+        # action_page 存储任务中心按钮所在页码。
+        action_page = int(action_value.get("page", 0) or 0)
         # source_message_id 存储最近用户问题消息 ID，重试时会重新读取编辑后的正文。
         source_message_id = self.task_source_messages.get(task_id) or str(
             action_value.get("source_message_id", "")
@@ -152,6 +160,20 @@ class BridgeActionMixin:
             )
             self._send_task_list_card(task_message)
             return
+        if action in {"task_page", "task_manage"}:
+            # requested_page 存储按钮请求的任务中心页码。
+            requested_page = int(action_value.get("page", 0) or 0)
+            # managed_task_id 存储需要展开管理操作的任务 ID；翻页时保持为空。
+            managed_task_id = task_id if action == "task_manage" else ""
+            # card 存储翻页或展开管理操作后的任务中心卡片。
+            card = build_task_list_card(
+                self.task_manager.tasks.values(),
+                self.task_manager.current_task_id_for_sender(operator_id),
+                page=requested_page,
+                managed_task_id=managed_task_id,
+            )
+            self._update_callback_card(token, card)
+            return
         if action == "new_task":
             self._create_task_card(operator_id, str(event.get("message_id", "")))
             return
@@ -159,6 +181,16 @@ class BridgeActionMixin:
         if action == "stop":
             # result 存储停止任务后的用户提示。
             result = self.task_manager.stop_task(task_id)
+            if action_surface == "task_center":
+                # card 存储停止任务后刷新出的当前页任务中心。
+                card = build_task_list_card(
+                    self.task_manager.tasks.values(),
+                    self.task_manager.current_task_id_for_sender(operator_id),
+                    page=action_page,
+                    managed_task_id=task_id,
+                )
+                self._update_callback_card(token, card)
+                return
             self._update_action_result_card(token, task_id, source_message_id, result)
             return
         if action in {"task_use", "task_delete", "task_rename"}:
@@ -182,6 +214,7 @@ class BridgeActionMixin:
             card = build_task_list_card(
                 self.task_manager.tasks.values(),
                 self.task_manager.current_task_id_for_sender(operator_id),
+                page=action_page,
             )
             self._update_callback_card(token, card)
             return
@@ -231,6 +264,15 @@ class BridgeActionMixin:
         self.recent_card_submissions[task_id] = (normalized_question, now)
         self.task_history_pages[task_id] = 0
         self.task_manager.sender_current_tasks[operator_id] = task_id
+        # task 存储卡片固定绑定的任务，问候语占位标题会在首次实质续问时自动升级。
+        task = self.task_manager.tasks[task_id]
+        if should_upgrade_task_title(task.title):
+            # upgraded_title 存储从本次实质问题生成的新任务标题。
+            upgraded_title = suggest_task_title(
+                normalized_question, int(task.task_id.removeprefix("t"))
+            )
+            if not upgraded_title.startswith("新对话 "):
+                self.task_manager.rename_task(task_id, upgraded_title)
         # synthetic_message 存储卡片表单转换出的内部消息，不会产生用户消息气泡。
         synthetic_message = LarkMessage(
             event_id=str(event.get("event_id", f"card-chat-{uuid.uuid4()}")),
@@ -373,7 +415,7 @@ class BridgeActionMixin:
     def _create_task_card(self, operator_id: str, reply_message_id: str) -> bool:
         """创建独立任务并回复一张空闲流式卡片；operator_id 是用户，reply_message_id 是原卡消息。"""
         # task_title 存储新任务的默认名称。
-        task_title = f"任务 {self.task_manager.next_task_number}"
+        task_title = f"新对话 {self.task_manager.next_task_number}"
         self.task_manager.create_task(operator_id, task_title)
         # task_id 存储刚创建并切换到的任务 ID。
         task_id = self.task_manager.current_task_id_for_sender(operator_id) or ""
@@ -403,7 +445,9 @@ class BridgeActionMixin:
         if task is None or not reply_message_id:
             return False
         # latest_content 存储卡片首次显示的完整可见历史或空任务提示。
-        latest_content = conversation_card_content(task.conversation_history, paginate=False)
+        latest_content = conversation_card_content(
+            task.conversation_history, paginate=False
+        )
         # initial_content 存储包含任务身份的卡片初始正文。
         initial_content = f"**{task.task_id} · {task.title}**\n\n{format_lark_markdown(latest_content)}"
         # card_id 存储为已有任务创建的新 CardKit 实体 ID。

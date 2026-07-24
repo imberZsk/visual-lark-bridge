@@ -24,8 +24,8 @@ from .lark_commands import ensure_lark_profile_exists
 from .messages import ensure_workspace_instruction_files
 from .messages import normalize_lark_event
 from .messages import parse_bot_command
-from .messages import preview_text
 from .messages import should_show_processing_placeholder
+from .messages import suggest_task_title
 from .models import LarkMessage
 import re
 
@@ -239,9 +239,8 @@ class BridgeEventMixin:
             return
         if command is None:
             # task_title 存储本条普通飞书消息自动创建的新任务标题。
-            task_title = (
-                preview_text(message.text, limit=24)
-                or f"任务 {self.task_manager.next_task_number}"
+            task_title = suggest_task_title(
+                message.text, self.task_manager.next_task_number
             )
             self.task_manager.create_task(message.sender_id, task_title)
         # should_show_placeholder 标记本轮是否会进入耗时 Claude 问答。

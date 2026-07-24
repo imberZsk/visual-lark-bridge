@@ -10,6 +10,33 @@ from .models import BotCommand
 from .models import LarkMessage
 
 
+# GENERIC_TASK_TITLES 存储不适合作为长期任务名称的常见寒暄文本。
+GENERIC_TASK_TITLES = frozenset(
+    {"你好", "您好", "你哈", "嗨", "哈喽", "hello", "hi", "在吗", "测试"}
+)
+
+
+def suggest_task_title(text: str, task_number: int) -> str:
+    """根据用户问题生成紧凑任务名；text 是原始输入，task_number 用于空内容兜底。"""
+    # normalized_text 存储去除首尾空白和连续换行后的标题候选文本。
+    normalized_text = " ".join(text.split())
+    if not normalized_text or normalized_text.casefold() in GENERIC_TASK_TITLES:
+        return f"新对话 {task_number}"
+    return preview_text(normalized_text, limit=24)
+
+
+def should_upgrade_task_title(title: str) -> bool:
+    """判断现有标题是否仍是问候语或自动占位名，适合被下一条实质问题替换。"""
+    # normalized_title 存储用于识别占位标题的去空白文本。
+    normalized_title = title.strip()
+    return (
+        normalized_title.casefold() in GENERIC_TASK_TITLES
+        or normalized_title.startswith("新对话 ")
+        or normalized_title.startswith("任务 ")
+        or normalized_title == "默认任务"
+    )
+
+
 def normalize_lark_event(event: dict) -> Optional[LarkMessage]:
     """把 lark-cli 输出的消息事件整理为桥接脚本内部消息对象。"""
     # message_type 表示飞书消息类型；桥接支持文本和常见媒体附件。

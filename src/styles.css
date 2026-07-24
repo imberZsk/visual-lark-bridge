@@ -300,12 +300,63 @@ input {
 .task-status-heading {
   margin-bottom: 6px;
 }
+.task-status-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .task-status-heading h3 {
   margin: 0;
   font-size: 14px;
 }
+.task-summary {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-drawer-list {
+  display: grid;
+  gap: 0;
+}
+.task-drawer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 72px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.task-drawer-main {
+  min-width: 0;
+}
+.task-drawer-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.task-drawer-title strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-drawer-title span,
+.task-drawer-question {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.task-drawer-question {
+  overflow: hidden;
+  margin-top: 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .task-turns {
-  color: var(--muted-text);
+  color: var(--text-muted);
   font-size: 12px;
 }
 
