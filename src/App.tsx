@@ -94,11 +94,6 @@ export default function App() {
           ? antdTheme.darkAlgorithm
           : antdTheme.defaultAlgorithm,
         token: {
-          colorPrimary: darkMode ? "#f0f0f0" : "#171717",
-          colorTextLightSolid: darkMode ? "#111111" : "#ffffff",
-          colorBgLayout: darkMode ? "#0f0f0f" : "#f5f5f5",
-          colorBgContainer: darkMode ? "#171717" : "#ffffff",
-          colorBorderSecondary: darkMode ? "#2c2c2c" : "#e4e4e4",
           borderRadius: 4,
           fontSize: 13,
           fontFamily:
@@ -106,15 +101,11 @@ export default function App() {
         },
         components: {
           Layout: {
-            bodyBg: darkMode ? "#0f0f0f" : "#f5f5f5",
+            bodyBg: darkMode ? "#141414" : "#f5f5f5",
             siderBg: darkMode ? "#141414" : "#ffffff",
           },
           Menu: {
             darkItemBg: "#141414",
-            darkItemSelectedBg: "#303030",
-            darkItemSelectedColor: "#ffffff",
-            itemSelectedBg: "#ededed",
-            itemSelectedColor: "#111111",
             itemBorderRadius: 4,
           },
           Button: { borderRadius: 4 },

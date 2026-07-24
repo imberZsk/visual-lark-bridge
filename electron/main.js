@@ -18,6 +18,8 @@ const APP_DATA_DIRECTORY = "lark-ai-bridge";
 const isDevelopment = process.env.NODE_ENV === "development";
 /** isSmokeTest 标记当前是否执行自动启动验证。 */
 const isSmokeTest = process.env.LARK_BRIDGE_SMOKE === "1";
+/** TRAY_ICON_FILE 存储 macOS 菜单栏模板图标的文件名。 */
+const TRAY_ICON_FILE = "trayTemplate.png";
 
 app.setName("Lark AI Bridge");
 app.setPath("userData", path.join(app.getPath("appData"), APP_DATA_DIRECTORY));
@@ -61,12 +63,19 @@ async function createWindow() {
   return window;
 }
 
+/** resolveTrayIconPath 返回开发环境或安装包中的菜单栏图标路径。 */
+function resolveTrayIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, TRAY_ICON_FILE)
+    : path.join(projectRoot, "build", TRAY_ICON_FILE);
+}
+
 /** createTray 创建菜单栏入口，窗口关闭后仍可管理后台桥接。 */
 function createTray() {
-  /** trayImage 存储 macOS 模板图标；空图像时系统仍显示菜单项。 */
-  const trayImage = nativeImage.createFromPath(
-    path.join(projectRoot, "build", "trayTemplate.png"),
-  );
+  /** trayImage 存储只有符号轮廓的 macOS 模板图标。 */
+  const trayImage = nativeImage.createFromPath(resolveTrayIconPath());
+  // 打包资源路径错误时 Electron 会返回空图像；立即失败可防止菜单栏出现空白占位。
+  if (trayImage.isEmpty()) throw new Error("菜单栏图标加载失败");
   trayImage.setTemplateImage(true);
   /** createdTray 存储新建的菜单栏图标。 */
   const createdTray = new Tray(trayImage);

@@ -22,7 +22,8 @@
     "start": "pnpm run build:ui && cross-env NODE_ENV=production electron .",
     "test": "vitest run && .venv/bin/python -m unittest discover -s tests -v",
     "lint": "eslint . && .venv/bin/ruff check .",
-    "format:check": "prettier . --check",
+    "format:check": "prettier \"src/**/*.{ts,tsx,css}\" \"electron/**/*.{js,cjs}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.yml\" package.json CHANGELOG.md --check",
+    "check:sensitive": "bash scripts/check-sensitive-files.sh",
     "verify:boot": "pnpm run build:ui && node scripts/verify-boot.mjs",
     "dist": "pnpm run build:ui && pnpm run build:sidecars && cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ electron-builder --mac --arm64 --publish never"
   },
@@ -71,6 +72,14 @@
       {
         "from": "build/sidecars",
         "to": "sidecars"
+      },
+      {
+        "from": "build/trayTemplate.png",
+        "to": "trayTemplate.png"
+      },
+      {
+        "from": "build/trayTemplate@2x.png",
+        "to": "trayTemplate@2x.png"
       }
     ],
     "mac": {
@@ -83,7 +92,7 @@
         }
       ],
       "category": "public.app-category.developer-tools",
-      "identity": null
+      "identity": "-"
     },
     "dmg": {
       "title": "Lark AI Bridge ${version}"

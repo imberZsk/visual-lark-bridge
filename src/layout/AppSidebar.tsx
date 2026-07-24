@@ -8,6 +8,8 @@ import {
 import { Layout, Menu, Segmented, Tooltip } from "antd";
 import type { ServiceStatus } from "../types/bridge";
 import type { ThemeMode } from "../theme/useThemeMode";
+/** appIcon 存储侧栏展示的应用 Logo 资源。 */
+import appIcon from "../../build/app-icon-64.png";
 
 /** ViewKey 描述控制台三个固定页面。 */
 export type ViewKey = "service" | "settings" | "logs";
@@ -39,13 +41,14 @@ export function AppSidebar(props: AppSidebarProps) {
   return (
     <Layout.Sider width={176} theme={props.themeMode} className="sidebar">
       <div className="brand">
-        <div className="brand-mark">LA</div>
+        <img className="brand-mark" src={appIcon} alt="" />
         <div>
           <strong>Lark AI Bridge</strong>
           <span>本机控制台</span>
         </div>
       </div>
       <Menu
+        theme={props.themeMode}
         mode="inline"
         selectedKeys={[props.activeView]}
         items={NAV_ITEMS}

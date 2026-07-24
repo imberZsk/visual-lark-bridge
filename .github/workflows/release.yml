@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r requirements.txt -r requirements-build.txt ruff
+          pnpm install --frozen-lockfile
+
+      - name: Verify source and tests
+        run: |
+          pnpm run check:sensitive
+          pnpm run lint
+          pnpm run format:check
+          pnpm run test
+
+      - name: Build unsigned macOS package
+        run: pnpm run dist
+
+      - name: Verify release asset set
+        shell: bash
+        run: |
+          # version 存储 package.json 中唯一的待发布版本。
+          version="$(node -p "require('./package.json').version")"
+          # expected_tag 存储本次版本对应的唯一合法标签。
+          expected_tag="v${version}"
+          # expected_asset 存储允许公开上传的唯一安装包路径。
+          expected_asset="release/LarkAIBridge-${version}-arm64.dmg"
+          # dmg_asset_count 存储构建目录顶层的 DMG 数量。
+          dmg_asset_count="$(find release -maxdepth 1 -type f -name '*.dmg' | wc -l | tr -d ' ')"
+          test "$GITHUB_REF_NAME" = "$expected_tag"
+          test "$dmg_asset_count" -eq 1
+          test -f "$expected_asset"
+          printf 'RELEASE_ASSET=%s\n' "$expected_asset" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$RELEASE_ASSET" \
+            --verify-tag \
+            --generate-notes \
+            --title "$GITHUB_REF_NAME" \
+            --notes "macOS 安装包未签名。首次打开请右键应用并选择“打开”；如仍被拦截，可执行：sudo xattr -rd com.apple.quarantine '/Applications/Lark AI Bridge.app'"
