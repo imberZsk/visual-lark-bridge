@@ -235,16 +235,13 @@ async function bootstrap() {
     return;
   }
 
-  /** initialConfig 存储首次启动时读取的自动启动偏好。 */
+  /** initialConfig 存储应用启动时读取的桥接自动启动偏好。 */
   const initialConfig = await configStore.read();
-  if (
-    initialConfig.autoStartBridge &&
-    app.getLoginItemSettings().wasOpenedAtLogin
-  ) {
+  if (initialConfig.autoStartBridge) {
     try {
-      /** discoveryModule 存储延迟加载的工具探测模块。 */
+      /** discoveryModule 存储应用启动时延迟加载的工具探测模块。 */
       const discoveryModule = await import("./toolDiscovery.js");
-      /** discovery 存储登录启动时的外部工具路径。 */
+      /** discovery 存储自动启动桥接所需的外部工具路径。 */
       const discovery = await discoveryModule.discoverTools();
       await service.start(initialConfig, discovery.path);
     } catch (error) {
