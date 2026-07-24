@@ -403,7 +403,7 @@ class BridgeActionMixin:
         if task is None or not reply_message_id:
             return False
         # latest_content 存储卡片首次显示的完整可见历史或空任务提示。
-        latest_content = conversation_card_content(task.conversation_history)
+        latest_content = conversation_card_content(task.conversation_history, paginate=False)
         # initial_content 存储包含任务身份的卡片初始正文。
         initial_content = f"**{task.task_id} · {task.title}**\n\n{format_lark_markdown(latest_content)}"
         # card_id 存储为已有任务创建的新 CardKit 实体 ID。

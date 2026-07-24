@@ -22,6 +22,8 @@ export function useThemeMode() {
   useEffect(() => {
     window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
     document.documentElement.dataset.theme = themeMode;
+    // 磁盘配置是跨渲染会话的权威持久化；localStorage 仅承担首屏缓存。
+    void window.larkBridge?.setTheme(themeMode);
   }, [themeMode]);
   return { themeMode, setThemeMode };
 }

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { EventEmitter } from "node:events";
 
@@ -115,13 +115,23 @@ export class ServiceManager extends EventEmitter {
       launchTarget.gatewayPath,
       "--claude-timeout",
       String(config.claudeTimeout),
+      "--provider",
+      config.provider,
+      "--codex-model",
+      config.codexModel,
     ];
     this.lastError = "";
     /** child 存储新启动的桥接进程。 */
+    /** childEnv 注入 macOS 系统 CA，修复 Python 3.14 默认 CA 路径缺失导致的 WebSocket 握手超时。 */
+    const childEnv = {
+      ...process.env,
+      PATH: runtimePath,
+      SSL_CERT_FILE: process.env.SSL_CERT_FILE || "/etc/ssl/cert.pem",
+    };
     const child = spawn(launchTarget.command, args, {
       cwd: runtimePaths.workspace,
       detached: true,
-      env: { ...process.env, PATH: runtimePath },
+      env: childEnv,
       stdio: ["ignore", "ignore", "pipe"],
     });
     this.child = child;
@@ -136,8 +146,12 @@ export class ServiceManager extends EventEmitter {
     child.once("exit", (code, signal) => {
       this.child = null;
       this.startedAt = null;
-      if (code && code !== 0)
-        this.lastError = `桥接进程退出（code=${code}, signal=${signal ?? "none"}）`;
+      if (code && code !== 0) {
+        const exitReason = `桥接进程退出（code=${code}, signal=${signal ?? "none"}）`;
+        this.lastError = this.lastError
+          ? `${exitReason}：${this.lastError}`
+          : exitReason;
+      }
       this.emit("changed", this.status());
     });
     this.emit("changed", this.status());
@@ -188,5 +202,73 @@ export class ServiceManager extends EventEmitter {
     } catch {
       return "";
     }
+  }
+
+  /** 清空桥接运行日志；仅处理应用数据目录下的固定日志文件。 */
+  async clearLogs() {
+    const logDirectory = path.join(this.options.userDataPath, "logs");
+    const logNames = [
+      "bridge.log",
+      "lark-event-gateway.stderr.log",
+      "lark-event-gateway.stdout.log",
+    ];
+    await Promise.all(
+      [...new Set(logNames)].map((name) =>
+        writeFile(path.join(logDirectory, name), "", "utf8"),
+      ),
+    );
+  }
+
+  /** 读取桥接任务状态；任务文件损坏或尚未生成时返回空列表。 */
+  async readTasks() {
+    try {
+      /** state 存储桥接任务状态文件解析结果。 */
+      const state = JSON.parse(
+        await readFile(
+          path.join(this.options.userDataPath, "logs", "tasks-state.json"),
+          "utf8",
+        ),
+      );
+      return Array.isArray(state.tasks) ? state.tasks : [];
+    } catch {
+      return [];
+    }
+  }
+
+  /** 删除已停止桥接中的任务；taskId 是待删除的任务 ID。 */
+  async deleteTask(taskId) {
+    if (this.child) throw new Error("桥接运行中不能删除任务，请先停止服务");
+    if (!/^t\d+$/.test(String(taskId))) throw new Error("任务 ID 格式无效");
+    const statePath = path.join(
+      this.options.userDataPath,
+      "logs",
+      "tasks-state.json",
+    );
+    const state = JSON.parse(await readFile(statePath, "utf8"));
+    const tasks = Array.isArray(state.tasks) ? state.tasks : [];
+    const remaining = tasks.filter((task) => task?.task_id !== taskId);
+    if (remaining.length === tasks.length)
+      throw new Error("任务不存在或已删除");
+    const nextState = { ...state, tasks };
+    nextState.tasks = remaining;
+    if (
+      nextState.sender_current_tasks &&
+      typeof nextState.sender_current_tasks === "object"
+    ) {
+      for (const [senderId, currentTaskId] of Object.entries(
+        nextState.sender_current_tasks,
+      )) {
+        if (currentTaskId === taskId)
+          delete nextState.sender_current_tasks[senderId];
+      }
+    }
+    const temporaryPath = `${statePath}.tmp`;
+    await writeFile(
+      temporaryPath,
+      `${JSON.stringify(nextState, null, 2)}\n`,
+      "utf8",
+    );
+    await rename(temporaryPath, statePath);
+    return remaining;
   }
 }

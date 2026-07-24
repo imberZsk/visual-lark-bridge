@@ -106,27 +106,19 @@ class CardBuilderTest(unittest.TestCase):
         self.assertFalse(settings["config"]["streaming_mode"])
         self.assertEqual(payload["sequence"], 9)
 
-    def test_answer_actions_use_one_compact_row_and_overflow(self):
-        """回答操作应只占一行，并把低频动作收入更多菜单。"""
+    def test_answer_actions_use_three_equal_core_buttons(self):
+        """回答操作应只保留三枚等宽核心按钮。"""
         # actions 存储回答卡片的紧凑操作栏。
         actions = answer_card_actions("t1", "om_1")
-        # columns 存储停止、继续和更多菜单三列。
+        # columns 存储三枚等宽按钮。
         columns = actions[0]["columns"]
-        # overflow 存储第三列中的更多操作组件。
-        overflow = columns[2]["elements"][0]
-        # menu_actions 存储更多菜单各选项编码的业务动作名。
-        menu_actions = [
-            json.loads(option["value"])["action"] for option in overflow["options"]
-        ]
 
         self.assertEqual(len(actions), 1)
         self.assertEqual(len(columns), 3)
         self.assertEqual(columns[0]["elements"][0]["text"]["content"], "所有任务")
         self.assertEqual(columns[1]["elements"][0]["text"]["content"], "停止")
-        self.assertEqual(overflow["tag"], "overflow")
-        self.assertIn("continue", menu_actions)
-        self.assertIn("retry", menu_actions)
-        self.assertIn("document", menu_actions)
+        self.assertEqual(columns[2]["elements"][0]["text"]["content"], "新任务")
+        self.assertTrue(all(column["elements"][0]["size"] == "small" for column in columns))
 
     def test_conversation_content_shows_history_and_current_turn(self):
         """卡片正文应同时显示之前的问答和正在处理的当前轮次。"""

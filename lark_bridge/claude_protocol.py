@@ -197,12 +197,13 @@ def conversation_card_content(
     question: str = "",
     answer: str = "",
     page: int = 0,
+    paginate: bool = True,
 ) -> str:
     """生成分页对话正文；history 是已完成轮次，当前问答只显示在最新页，page 从零开始。"""
     # normalized_page 存储非负历史页码，零表示最新一页。
-    normalized_page = max(0, page)
+    normalized_page = max(0, page) if paginate else 0
     # page_end 存储当前页在历史列表中的右边界。
-    page_end = max(0, len(history) - normalized_page * CARD_HISTORY_PAGE_TURNS)
+    page_end = max(0, len(history) - normalized_page * CARD_HISTORY_PAGE_TURNS) if paginate else len(history)
     # page_start 存储当前页在历史列表中的左边界。
     page_start = max(0, page_end - CARD_HISTORY_PAGE_TURNS)
     # turns 存储当前页需要展示的历史副本，避免渲染过程修改任务状态。
@@ -238,7 +239,7 @@ def conversation_card_content(
         1, (visible_turn_count + CARD_HISTORY_PAGE_TURNS - 1) // CARD_HISTORY_PAGE_TURNS
     )
     # page_label 存储用户可理解的倒序页码说明。
-    page_label = f"对话记录 · 第 {min(normalized_page + 1, total_pages)}/{total_pages} 页（从新到旧）"
+    page_label = f"对话记录 · 第 {min(normalized_page + 1, total_pages)}/{total_pages} 页（从新到旧）" if paginate else "对话记录"
     if page_trimmed:
         page_label += " · 本页过长已压缩"
     content = f"_<font color='grey'>{page_label}</font>_\n\n{content}"

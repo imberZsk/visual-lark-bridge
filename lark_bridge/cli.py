@@ -59,6 +59,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=180,
         help="等待 Claude 最终回答前记录软超时提示的秒数",
     )
+    parser.add_argument("--provider", choices=["claude", "codex"], default="claude")
+    parser.add_argument("--codex-model", default="")
     parser.add_argument(
         "--system-prompt",
         default=DEFAULT_SYSTEM_PROMPT,

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import Optional
 
 
@@ -21,8 +20,9 @@ def answer_card_actions(task_id: str, source_message_id: str) -> list[dict]:
     primary_specs = [
         ("所有任务", "show_tasks", "primary_filled"),
         ("停止", "stop", "danger"),
+        ("新任务", "new_task", "default"),
     ]
-    # columns 存储两个高频按钮和一个更多操作菜单。
+    # columns 存储三枚等宽核心按钮，避免菜单按钮与普通按钮尺寸不一致。
     columns: list[dict] = []
     for label, action, button_type in primary_specs:
         # button 存储当前高频操作按钮配置。
@@ -39,37 +39,6 @@ def answer_card_actions(task_id: str, source_message_id: str) -> list[dict]:
         columns.append(
             {"tag": "column", "width": "weighted", "weight": 1, "elements": [button]}
         )
-    # overflow_specs 存储收进更多菜单的低频操作文案和动作名。
-    overflow_specs = [
-        ("较早对话", "history_older"),
-        ("回到最新", "history_latest"),
-        ("新任务", "new_task"),
-        ("继续", "continue"),
-        ("重新生成", "retry"),
-        ("解释一下", "explain"),
-        ("生成文档", "document"),
-        ("打开任务", "open_task"),
-        ("查看日志", "open_logs"),
-        ("查看生成文件", "open_files"),
-    ]
-    # overflow_options 存储更多菜单的选项，每项 value 都携带完整任务上下文。
-    overflow_options = [
-        {
-            "text": {"tag": "plain_text", "content": label},
-            "value": json.dumps({**base_value, "action": action}, ensure_ascii=False),
-        }
-        for label, action in overflow_specs
-    ]
-    columns.append(
-        {
-            "tag": "column",
-            "width": "weighted",
-            "weight": 1,
-            "elements": [
-                {"tag": "overflow", "width": "fill", "options": overflow_options}
-            ],
-        }
-    )
     return [
         {
             "tag": "column_set",
@@ -88,6 +57,8 @@ def answer_card_input_form(task_id: str) -> dict:
         "tag": "input",
         "element_id": f"chat_form_{safe_task_id}",
         "name": f"chat_input_{safe_task_id}",
+        # default_value 显式写为空，CardKit 替换组件时才能清除客户端残留输入。
+        "default_value": "",
         "input_type": "text",
         "max_length": 1000,
         "width": "fill",
@@ -170,6 +141,7 @@ def build_task_list_card(
                 "text": {"tag": "plain_text", "content": label},
                 "type": button_type,
                 "width": "fill",
+                "size": "small",
                 "behaviors": [
                     {"type": "callback", "value": {**base_value, "action": action}}
                 ],

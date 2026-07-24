@@ -16,6 +16,8 @@ from .config import DEFAULT_EVENT_GATEWAY
 from .config import DEFAULT_LARK_CONFIG
 from .consumers import LarkGatewayConsumer
 from .task_manager import ClaudeTaskManager
+from .claude_stream_session import ClaudeStreamSession
+from .codex_session import CodexSession
 import argparse
 
 
@@ -31,11 +33,14 @@ class BridgeApp(
         # processed_event_ids 保存已处理飞书事件 ID，避免重复回复。
         self.processed_event_ids: set[str] = set()
         # task_manager 管理多个独立 Claude 任务窗口。
+        # session_factory 根据桌面端选择创建 Claude 或 Codex 会话。
+        session_factory = ClaudeStreamSession if getattr(args, "provider", "claude") == "claude" else CodexSession
         self.task_manager = ClaudeTaskManager(
             workspace_root=Path(args.workspace).expanduser().resolve(),
             log_dir=self.log_dir,
             system_prompt=args.system_prompt,
             timeout=args.claude_timeout,
+            session_factory=session_factory,
         )
         # consumer 管理同时包含普通消息和卡片回调的官方 SDK 单长连接。
         self.consumer = LarkGatewayConsumer(

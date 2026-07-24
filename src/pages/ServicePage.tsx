@@ -13,6 +13,7 @@ interface ServicePageProps {
   onReveal(): void;
   onDisableLegacy(): void;
   onClearRuntime(): void;
+  onDeleteTask(taskId: string): Promise<void>;
 }
 
 /** ServicePage 在单一工作区中组合服务状态和本机诊断。 */
@@ -25,6 +26,7 @@ export function ServicePage(props: ServicePageProps) {
         onStart={props.onStart}
         onStop={props.onStop}
         onRestart={props.onRestart}
+        onDeleteTask={props.onDeleteTask}
       />
       <Divider />
       <DiagnosticsPanel

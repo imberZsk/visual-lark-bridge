@@ -1,4 +1,4 @@
-import { Button, Form, Input, InputNumber, Switch } from "antd";
+import { Button, Form, Input, InputNumber, Select, Switch } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 import type { BridgeConfig } from "../types/bridge";
 
@@ -26,6 +26,17 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
             rules={[{ required: true }]}
           >
             <Input />
+          </Form.Item>
+          <Form.Item name="provider" label="AI 提供方">
+            <Select
+              options={[
+                { value: "claude", label: "Claude Code" },
+                { value: "codex", label: "Codex CLI" },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="codexModel" label="Codex 模型（可选）">
+            <Input placeholder="留空使用 Codex 默认模型" />
           </Form.Item>
           <Form.Item name="larkConfigPath" label="lark-cli 配置">
             <Input />

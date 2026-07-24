@@ -390,7 +390,7 @@ class ClaudeTest(unittest.TestCase):
         self.assertIn("/cards/card_1/elements/chat_form_t2", args[3])
         self.assertEqual(payload["sequence"], 9)
         self.assertEqual(serialized_form["element_id"], "chat_form_t2")
-        self.assertNotIn("default_value", serialized_form)
+        self.assertEqual(serialized_form["default_value"], "")
 
     def test_ask_task_forwards_on_delta_to_session(self):
         """普通消息带流式回调时，ask_task 应把 on_delta 透传给会话的 ask。"""

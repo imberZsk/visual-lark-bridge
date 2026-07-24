@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   App as AntApp,
   ConfigProvider,
@@ -15,6 +15,14 @@ import { ServicePage } from "./pages/ServicePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { useThemeMode, type ThemeMode } from "./theme/useThemeMode";
 
+/** GLOBAL_MESSAGE_CONFIG 将所有 Toast 的几何中心对齐窗口中心。 */
+const GLOBAL_MESSAGE_CONFIG = {
+  duration: 3,
+  maxCount: 3,
+  top: "50%",
+  styles: { listContent: { transform: "translateY(-50%)" } },
+};
+
 /** BridgeConsoleProps 描述控制台外观状态。 */
 interface BridgeConsoleProps {
   themeMode: ThemeMode;
@@ -27,6 +35,13 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
   const controller = useBridgeController();
   /** activeView 存储当前侧栏页面。 */
   const [activeView, setActiveView] = useState<ViewKey>("service");
+
+  useEffect(() => {
+    // 磁盘配置优先于首屏 localStorage 缓存，确保多次重启后的主题一致。
+    if (controller.snapshot?.config.theme !== themeMode) {
+      onThemeChange(controller.snapshot?.config.theme ?? themeMode);
+    }
+  }, [controller.snapshot?.config.theme, onThemeChange, themeMode]);
 
   if (!controller.snapshot) {
     return (
@@ -59,6 +74,7 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
             onReveal={controller.revealData}
             onDisableLegacy={controller.disableLegacy}
             onClearRuntime={controller.clearRuntime}
+            onDeleteTask={controller.deleteTask}
           />
         )}
         {activeView === "settings" && (
@@ -73,6 +89,7 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
             logs={controller.logs}
             loading={controller.logsLoading}
             onRefresh={controller.refreshLogs}
+            onClear={controller.clearLogs}
           />
         )}
       </Layout.Content>
@@ -90,6 +107,7 @@ export default function App() {
     <ConfigProvider
       locale={zhCN}
       componentSize="small"
+      modal={{ centered: true }}
       theme={{
         algorithm: darkMode
           ? antdTheme.darkAlgorithm
@@ -114,7 +132,7 @@ export default function App() {
         },
       }}
     >
-      <AntApp>
+      <AntApp message={GLOBAL_MESSAGE_CONFIG}>
         <BridgeConsole themeMode={themeMode} onThemeChange={setThemeMode} />
       </AntApp>
     </ConfigProvider>

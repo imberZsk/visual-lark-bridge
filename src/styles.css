@@ -30,6 +30,11 @@
   box-sizing: border-box;
 }
 
+/* Ant Design 默认从最近点击位置缩放；固定中心原点让所有弹层直接从屏幕中间出现。 */
+.ant-modal {
+  transform-origin: center center !important;
+}
+
 body {
   margin: 0;
   min-width: 760px;
@@ -277,6 +282,7 @@ input {
 
 .panel-actions {
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
   margin-bottom: 10px;
 }
@@ -286,6 +292,21 @@ input {
   min-height: 100vh;
   place-items: center;
   background: var(--app-bg);
+}
+
+.task-status-section {
+  margin-top: 16px;
+}
+.task-status-heading {
+  margin-bottom: 6px;
+}
+.task-status-heading h3 {
+  margin: 0;
+  font-size: 14px;
+}
+.task-turns {
+  color: var(--muted-text);
+  font-size: 12px;
 }
 
 @media (max-width: 860px) {

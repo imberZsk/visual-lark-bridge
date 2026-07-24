@@ -103,7 +103,7 @@ class CardInteractionTest(unittest.TestCase):
         # cleared_input 存储用于替换原输入框的空白 CardKit 输入组件。
         cleared_input = replace_element.call_args.args[2]
         self.assertEqual(cleared_input["element_id"], f"chat_form_{task.task_id}")
-        self.assertNotIn("default_value", cleared_input)
+        self.assertEqual(cleared_input["default_value"], "")
 
     def test_card_chat_submit_routes_to_bound_task(self):
         """从旧卡提交问题时应进入该卡绑定的任务，而不是当前选中的另一任务。"""

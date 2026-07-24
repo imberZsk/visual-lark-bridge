@@ -4,10 +4,13 @@ import path from "node:path";
 /** DEFAULT_CONFIG 存储首次启动时使用的非敏感桥接配置。 */
 export const DEFAULT_CONFIG = Object.freeze({
   profile: "visual-lark-bridge",
+  provider: "claude",
+  codexModel: "",
   larkConfigPath: "~/.lark-cli/config.json",
   workspacePath: "",
   claudeTimeout: 180,
   autoStartBridge: true,
+  theme: "dark",
 });
 
 /** ConfigStore 负责校验并原子持久化桌面端配置。 */
@@ -47,6 +50,13 @@ export class ConfigStore {
     return config;
   }
 
+  /** 更新单个配置字段并保留其他持久化配置；patch 是渲染层提交的局部配置。 */
+  async update(patch) {
+    /** currentConfig 存储更新前的完整配置。 */
+    const currentConfig = await this.read();
+    return this.write({ ...currentConfig, ...patch });
+  }
+
   /** 将未知输入收敛为受支持的配置字段。 */
   validate(input) {
     /** source 存储可安全读取的输入对象。 */
@@ -58,6 +68,9 @@ export class ConfigStore {
         typeof source.profile === "string" && source.profile.trim()
           ? source.profile.trim()
           : DEFAULT_CONFIG.profile,
+      provider: source.provider === "codex" ? "codex" : "claude",
+      codexModel:
+        typeof source.codexModel === "string" ? source.codexModel.trim() : "",
       larkConfigPath:
         typeof source.larkConfigPath === "string" &&
         source.larkConfigPath.trim()
@@ -74,6 +87,7 @@ export class ConfigStore {
           ? timeoutValue
           : DEFAULT_CONFIG.claudeTimeout,
       autoStartBridge: source.autoStartBridge !== false,
+      theme: source.theme === "light" ? "light" : "dark",
     };
   }
 }

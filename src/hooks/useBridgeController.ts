@@ -18,10 +18,12 @@ export interface BridgeController {
   restartService(): Promise<void>;
   saveConfig(config: BridgeConfig): Promise<void>;
   refreshLogs(): Promise<void>;
+  clearLogs(): Promise<void>;
   setAutoStart(enabled: boolean): Promise<void>;
   revealData(): Promise<void>;
   disableLegacy(): Promise<void>;
   clearRuntime(): Promise<void>;
+  deleteTask(taskId: string): Promise<void>;
 }
 
 /** useBridgeController 管理 Electron IPC 对应的全部页面业务状态。 */
@@ -96,6 +98,13 @@ export function useBridgeController(): BridgeController {
     }
   }, []);
 
+  /** clearLogs 清空运行日志并同步清空当前页面内容。 */
+  const clearLogs = useCallback(async () => {
+    await window.larkBridge.clearLogs();
+    setLogs("");
+    messageApi.success("日志已清空");
+  }, [messageApi]);
+
   /** setAutoStart 更新系统登录启动设置并刷新快照。 */
   const setAutoStart = useCallback(
     async (enabled: boolean) => {
@@ -120,11 +129,34 @@ export function useBridgeController(): BridgeController {
     setSnapshot(await window.larkBridge.clearRuntime());
   }, []);
 
+  /** deleteTask 删除已停止服务中的任务并刷新任务列表。 */
+  const deleteTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await window.larkBridge.deleteTask(taskId);
+        await refreshSnapshot();
+        messageApi.success("任务已删除");
+      } catch (error) {
+        messageApi.error(
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+    },
+    [messageApi, refreshSnapshot],
+  );
+
   useEffect(() => {
     refreshSnapshot().catch((error) => messageApi.error(String(error)));
     /** unsubscribe 存储服务状态监听的清理函数。 */
     const unsubscribe = window.larkBridge.onStateChanged(updateService);
-    return unsubscribe;
+    // taskPollingTimer 定期读取任务状态，让桌面列表跟随飞书会话实时变化。
+    const taskPollingTimer = window.setInterval(() => {
+      refreshSnapshot().catch(() => undefined);
+    }, 2000);
+    return () => {
+      unsubscribe();
+      window.clearInterval(taskPollingTimer);
+    };
   }, [messageApi, refreshSnapshot, updateService]);
 
   return {
@@ -138,9 +170,11 @@ export function useBridgeController(): BridgeController {
     restartService: () => runServiceAction(window.larkBridge.restart),
     saveConfig,
     refreshLogs,
+    clearLogs,
     setAutoStart,
     revealData,
     disableLegacy,
     clearRuntime,
+    deleteTask,
   };
 }

@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 /** execFileAsync 存储无 shell 命令执行器。 */
 const execFileAsync = promisify(execFile);
 /** REQUIRED_TOOLS 存储桥接运行依赖的外部命令。 */
-export const REQUIRED_TOOLS = Object.freeze(["claude", "lark-cli"]);
+export const REQUIRED_TOOLS = Object.freeze(["claude", "codex", "lark-cli"]);
 
 /** 读取登录 shell 的 PATH，保证桌面启动时也能找到用户命令。 */
 export async function readLoginPath() {

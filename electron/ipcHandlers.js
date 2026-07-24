@@ -19,6 +19,8 @@ export function registerIpcHandlers(context) {
     const discovery = await discoverTools();
     /** legacyServices 存储检测到的历史 LaunchAgent。 */
     const legacyServices = await context.legacyService.inspect();
+    /** tasks 存储桥接任务的本地状态快照。 */
+    const tasks = await context.service.readTasks();
     return {
       config,
       service: context.service.status(),
@@ -27,6 +29,7 @@ export function registerIpcHandlers(context) {
       autoStart: context.app.getLoginItemSettings().openAtLogin,
       userDataPath: context.userDataPath,
       version: context.app.getVersion(),
+      tasks,
     };
   };
 
@@ -34,13 +37,17 @@ export function registerIpcHandlers(context) {
   ipcMain.handle(IPC_CHANNELS.saveConfig, async (_event, input) =>
     context.configStore.write(input),
   );
+  ipcMain.handle(IPC_CHANNELS.setTheme, async (_event, theme) =>
+    context.configStore.update({ theme }),
+  );
   ipcMain.handle(IPC_CHANNELS.start, async () => {
     /** config 存储本次启动使用的持久化配置。 */
     const config = await context.configStore.read();
     /** discovery 存储本次启动使用的 PATH 与工具状态。 */
     const discovery = await discoverTools();
-    if (Object.values(discovery.tools).some((toolPath) => !toolPath))
-      throw new Error("缺少 claude 或 lark-cli 命令");
+    const requiredTool = config.provider === "codex" ? "codex" : "claude";
+    if (!discovery.tools[requiredTool] || !discovery.tools["lark-cli"])
+      throw new Error(`缺少 ${requiredTool} 或 lark-cli 命令`);
     return context.service.start(config, discovery.path);
   });
   ipcMain.handle(IPC_CHANNELS.stop, () => context.service.stop());
@@ -49,8 +56,9 @@ export function registerIpcHandlers(context) {
     const config = await context.configStore.read();
     /** discovery 存储重启时重新读取的登录环境。 */
     const discovery = await discoverTools();
-    if (Object.values(discovery.tools).some((toolPath) => !toolPath))
-      throw new Error("缺少 claude 或 lark-cli 命令");
+    const requiredTool = config.provider === "codex" ? "codex" : "claude";
+    if (!discovery.tools[requiredTool] || !discovery.tools["lark-cli"])
+      throw new Error(`缺少 ${requiredTool} 或 lark-cli 命令`);
     return context.service.restart(config, discovery.path);
   });
   ipcMain.handle(IPC_CHANNELS.setAutoStart, (_event, enabled) => {
@@ -64,6 +72,11 @@ export function registerIpcHandlers(context) {
     shell.openPath(context.userDataPath),
   );
   ipcMain.handle(IPC_CHANNELS.readLogs, () => context.service.readLogs());
+  ipcMain.handle(IPC_CHANNELS.clearLogs, () => context.service.clearLogs());
+  ipcMain.handle(IPC_CHANNELS.readTasks, () => context.service.readTasks());
+  ipcMain.handle(IPC_CHANNELS.deleteTask, (_event, taskId) =>
+    context.service.deleteTask(taskId),
+  );
   ipcMain.handle(IPC_CHANNELS.disableLegacy, async () => {
     await context.legacyService.disable();
     return buildSnapshot();

@@ -348,7 +348,7 @@ class BridgeEventMixin:
                 visible_history = previous_history if include_history else []
                 # conversation_body 存储本轮实时回答，定稿时才补回此前轮次。
                 conversation_body = conversation_card_content(
-                    visible_history, message.text, body
+                    visible_history, message.text, body, paginate=False
                 )
                 # progress_content 存储带任务元数据头的当前可见对话。
                 progress_content = render_task_progress(
