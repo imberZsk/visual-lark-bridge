@@ -1,0 +1,10 @@
+@.agents/project-context.md
+@.agents/architecture.md
+@.agents/coding-standards.md
+@.agents/definition-of-done.md
+@.agents/git-worktree-rules.md
+@.agents/integration-standards.md
+@.agents/operations.md
+@.agents/pitfalls.md
+@.agents/security.md
+@.agents/testing-standards.md
