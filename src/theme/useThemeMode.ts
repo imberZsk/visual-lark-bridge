@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 /** ThemeMode 描述应用支持的黑白显示模式。 */
 export type ThemeMode = "light" | "dark";
 /** THEME_STORAGE_KEY 存储主题偏好的 localStorage 键名。 */
-const THEME_STORAGE_KEY = "lark-ai-bridge.theme";
+const THEME_STORAGE_KEY = "visual-lark-bridge.theme";
 
 /** readInitialTheme 读取持久化主题，首次启动时跟随系统偏好。 */
 function readInitialTheme(): ThemeMode {

@@ -1,9 +1,9 @@
 {
-  "name": "lark-ai-bridge",
+  "name": "visual-lark-bridge",
   "private": true,
   "version": "0.1.0",
   "description": "可视化管理飞书与本地 Claude Code 桥接服务的 Electron 桌面应用",
-  "productName": "Lark AI Bridge",
+  "productName": "Visual Lark Bridge",
   "author": "imber",
   "license": "MIT",
   "packageManager": "pnpm@11.13.0",
@@ -24,6 +24,7 @@
     "lint": "eslint . && .venv/bin/ruff check .",
     "format:check": "prettier \"src/**/*.{ts,tsx,css}\" \"electron/**/*.{js,cjs}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.yml\" package.json CHANGELOG.md --check",
     "check:sensitive": "bash scripts/check-sensitive-files.sh",
+    "check:naming": "bash scripts/check-product-naming.sh",
     "verify:boot": "pnpm run build:ui && node scripts/verify-boot.mjs",
     "dist": "pnpm run build:ui && pnpm run build:sidecars && cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ electron-builder --mac --arm64 --publish never"
   },
@@ -57,8 +58,8 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.imber.lark-ai-bridge",
-    "productName": "Lark AI Bridge",
+    "appId": "com.imber.visual-lark-bridge",
+    "productName": "Visual Lark Bridge",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -84,7 +85,7 @@
     ],
     "mac": {
       "icon": "build/icon.icns",
-      "artifactName": "LarkAIBridge-${version}-${arch}.${ext}",
+      "artifactName": "VisualLarkBridge-${version}-${arch}.${ext}",
       "target": [
         {
           "target": "dmg",
@@ -95,7 +96,7 @@
       "identity": "-"
     },
     "dmg": {
-      "title": "Lark AI Bridge ${version}"
+      "title": "Visual Lark Bridge ${version}"
     }
   }
 }

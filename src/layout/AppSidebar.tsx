@@ -43,7 +43,7 @@ export function AppSidebar(props: AppSidebarProps) {
       <div className="brand">
         <img className="brand-mark" src={appIcon} alt="" />
         <div>
-          <strong>Lark AI Bridge</strong>
+          <strong>Visual Lark Bridge</strong>
           <span>本机控制台</span>
         </div>
       </div>

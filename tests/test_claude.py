@@ -9,7 +9,7 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-from lark_ai_bridge import (
+from visual_lark_bridge import (
     ClaudeInteractiveSession,
     ClaudeTaskManager,
     answer_card_input_form,

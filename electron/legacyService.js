@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 /** LEGACY_LABELS 存储历史安装脚本使用过的服务标识。 */
 const LEGACY_LABELS = Object.freeze([
-  "com.imber.lark-ai-bridge",
+  "com.imber.visual-lark-bridge",
   "com.imber.lark-claude-bridge",
 ]);
 

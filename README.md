@@ -1,6 +1,6 @@
-# Lark AI Bridge
+# Visual Lark Bridge
 
-Lark AI Bridge 是飞书与本机 Claude Code 之间的桌面桥接工具。macOS 应用提供黑白模式、服务启动、停止、重启、登录自启、配置、依赖诊断、日志查看、旧 LaunchAgent 迁移和运行数据清理；桥接与飞书 WebSocket 网关均由 Python 实现并打包为独立 sidecar，普通用户不需要安装 Python。
+Visual Lark Bridge 是飞书与本机 Claude Code 之间的桌面桥接工具。macOS 应用提供黑白模式、服务启动、停止、重启、登录自启、配置、依赖诊断、日志查看、旧 LaunchAgent 迁移和运行数据清理；桥接与飞书 WebSocket 网关均由 Python 实现并打包为独立 sidecar，普通用户不需要安装 Python。
 
 桥接通过 Claude Code 的 stream-json 接口实时接收思考、工具状态和正文 token，并持续更新飞书流式卡片。卡片创建后会先显示“AI思考中...”，不会在首个 token 到达前出现空白。
 
@@ -31,13 +31,13 @@ python3 -m venv .venv
 pnpm dev
 ```
 
-构建未签名的 Apple Silicon DMG：
+构建使用免费 ad-hoc 完整性签名、未经过 Apple 公证的 Apple Silicon DMG：
 
 ```bash
 pnpm dist
 ```
 
-应用安装在 `/Applications/Lark AI Bridge.app`，配置、日志和默认工作目录位于 `~/Library/Application Support/lark-ai-bridge`。App Secret 仍由 `lark-cli` 写入 macOS Keychain，桌面应用不会读取或保存明文密钥。
+应用安装在 `/Applications/Visual Lark Bridge.app`，配置、日志和默认工作目录位于 `~/Library/Application Support/visual-lark-bridge`。App Secret 仍由 `lark-cli` 写入 macOS Keychain，桌面应用不会读取或保存明文密钥。
 
 关闭窗口后应用留在菜单栏；从菜单栏退出时会停止它启动的桥接进程。应用内“停用旧服务”会卸载历史 LaunchAgent 并把 plist 改名为 `.disabled`，不会删除旧运行数据。
 
@@ -63,18 +63,18 @@ python3 -m pip install -r requirements.txt
 ./install-launch-agent.sh
 ```
 
-安装脚本会把运行副本、本机 `.env` 和首次安装时的任务状态迁移到 `~/Library/Application Support/lark-ai-bridge`。运行目录中的 `.env` 权限为 `0600`，LaunchAgent 通过 `run.sh` 加载它，不会把配置值展开写入 plist。桌面应用与 LaunchAgent 不应同时启用。
+安装脚本会把运行副本、本机 `.env` 和源码目录中首次安装时的任务状态写入 `~/Library/Application Support/visual-lark-bridge`。本次产品重命名不会读取或迁移旧产品的数据目录。运行目录中的 `.env` 权限为 `0600`，LaunchAgent 通过 `run.sh` 加载它，不会把配置值展开写入 plist。桌面应用与 LaunchAgent 不应同时启用。
 
 常用命令：
 
 ```bash
 # 查看服务状态
-launchctl print gui/$(id -u)/com.imber.lark-ai-bridge
+launchctl print gui/$(id -u)/com.imber.visual-lark-bridge
 
 # 查看桥接日志
-tail -f "$HOME/Library/Application Support/lark-ai-bridge/logs/bridge.log"
+tail -f "$HOME/Library/Application Support/visual-lark-bridge/logs/bridge.log"
 
 # 停止并取消自启
-launchctl bootout gui/$(id -u)/com.imber.lark-ai-bridge
-rm "$HOME/Library/LaunchAgents/com.imber.lark-ai-bridge.plist"
+launchctl bootout gui/$(id -u)/com.imber.visual-lark-bridge
+rm "$HOME/Library/LaunchAgents/com.imber.visual-lark-bridge.plist"
 ```

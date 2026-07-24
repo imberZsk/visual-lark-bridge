@@ -7,7 +7,7 @@ from unittest import mock
 from pathlib import Path
 from types import SimpleNamespace
 
-from lark_ai_bridge import (
+from visual_lark_bridge import (
     BridgeApp,
     LarkMessage,
     DEFAULT_LARK_PROFILE,

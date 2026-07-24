@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lark_ai_bridge import (
+from visual_lark_bridge import (
     ClaudeTaskManager,
     DEFAULT_LARK_PROFILE,
     DEFAULT_PROCESSING_TEXT,

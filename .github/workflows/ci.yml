@@ -41,7 +41,9 @@ jobs:
           pnpm install --frozen-lockfile
 
       - name: Check sensitive information
-        run: pnpm run check:sensitive
+        run: |
+          pnpm run check:sensitive
+          pnpm run check:naming
 
       - name: Lint and format
         run: |

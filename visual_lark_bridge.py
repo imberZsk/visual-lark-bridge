@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lark AI Bridge 主程序入口与公共兼容导出。"""
+"""Visual Lark Bridge 主程序入口与公共兼容导出。"""
 
 from lark_bridge.config import *
 from lark_bridge.models import *

@@ -13,7 +13,7 @@ const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 /** projectRoot 存储开发源码或打包 app.asar 根目录。 */
 const projectRoot = path.resolve(currentDirectory, "..");
 /** APP_DATA_DIRECTORY 存储跨版本稳定的用户数据目录名称。 */
-const APP_DATA_DIRECTORY = "lark-ai-bridge";
+const APP_DATA_DIRECTORY = "visual-lark-bridge";
 /** isDevelopment 标记当前是否连接 Vite 开发服务器。 */
 const isDevelopment = process.env.NODE_ENV === "development";
 /** isSmokeTest 标记当前是否执行自动启动验证。 */
@@ -21,7 +21,7 @@ const isSmokeTest = process.env.LARK_BRIDGE_SMOKE === "1";
 /** TRAY_ICON_FILE 存储 macOS 菜单栏模板图标的文件名。 */
 const TRAY_ICON_FILE = "trayTemplate.png";
 
-app.setName("Lark AI Bridge");
+app.setName("Visual Lark Bridge");
 app.setPath("userData", path.join(app.getPath("appData"), APP_DATA_DIRECTORY));
 
 /** mainWindow 存储唯一控制台窗口。 */
@@ -79,7 +79,7 @@ function createTray() {
   trayImage.setTemplateImage(true);
   /** createdTray 存储新建的菜单栏图标。 */
   const createdTray = new Tray(trayImage);
-  createdTray.setToolTip("Lark AI Bridge");
+  createdTray.setToolTip("Visual Lark Bridge");
   createdTray.setContextMenu(
     Menu.buildFromTemplate([
       {

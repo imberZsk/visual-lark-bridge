@@ -8,7 +8,7 @@ describe("ServiceOverview", () => {
     /** snapshot 存储运行状态下的完整测试快照。 */
     const snapshot: BridgeSnapshot = {
       config: {
-        profile: "lark-ai-bridge",
+        profile: "visual-lark-bridge",
         larkConfigPath: "~/.lark-cli/config.json",
         workspacePath: "",
         claudeTimeout: 180,
@@ -23,7 +23,7 @@ describe("ServiceOverview", () => {
       tools: { claude: "/bin/claude", "lark-cli": "/bin/lark-cli" },
       legacyServices: [],
       autoStart: true,
-      userDataPath: "/tmp/lark-ai-bridge",
+      userDataPath: "/tmp/visual-lark-bridge",
       version: "0.1.0",
     };
     render(

@@ -48,7 +48,7 @@ def main() -> int:
     shutil.rmtree(OUTPUT_DIR, ignore_errors=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     SPEC_DIR.mkdir(parents=True, exist_ok=True)
-    build_sidecar("lark-ai-bridge", PROJECT_ROOT / "lark_ai_bridge.py", ())
+    build_sidecar("visual-lark-bridge", PROJECT_ROOT / "visual_lark_bridge.py", ())
     build_sidecar(
         "lark-event-gateway",
         PROJECT_ROOT / "lark_bridge" / "event_gateway.py",

@@ -47,7 +47,7 @@ export class ServiceManager extends EventEmitter {
         command: path.join(
           this.options.resourcesPath,
           "sidecars",
-          "lark-ai-bridge",
+          "visual-lark-bridge",
         ),
         prefixArgs: [],
         gatewayPath: path.join(
@@ -59,7 +59,9 @@ export class ServiceManager extends EventEmitter {
     }
     return {
       command: path.join(this.options.projectRoot, ".venv", "bin", "python"),
-      prefixArgs: [path.join(this.options.projectRoot, "lark_ai_bridge.py")],
+      prefixArgs: [
+        path.join(this.options.projectRoot, "visual_lark_bridge.py"),
+      ],
       gatewayPath: path.join(
         this.options.projectRoot,
         "lark_bridge",

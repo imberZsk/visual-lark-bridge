@@ -25,7 +25,7 @@ describe("useThemeMode", () => {
     /** result 存储主题 hook 当前返回值。 */
     const { result } = renderHook(() => useThemeMode());
     act(() => result.current.setThemeMode("light"));
-    expect(window.localStorage.getItem("lark-ai-bridge.theme")).toBe("light");
+    expect(window.localStorage.getItem("visual-lark-bridge.theme")).toBe("light");
     expect(document.documentElement.dataset.theme).toBe("light");
   });
 });

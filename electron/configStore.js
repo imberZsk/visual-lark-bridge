@@ -3,7 +3,7 @@ import path from "node:path";
 
 /** DEFAULT_CONFIG 存储首次启动时使用的非敏感桥接配置。 */
 export const DEFAULT_CONFIG = Object.freeze({
-  profile: "lark-ai-bridge",
+  profile: "visual-lark-bridge",
   larkConfigPath: "~/.lark-cli/config.json",
   workspacePath: "",
   claudeTimeout: 180,

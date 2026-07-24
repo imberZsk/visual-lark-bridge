@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""旧文件名兼容入口；新安装应使用 lark_ai_bridge.py。"""
+"""旧文件名兼容入口；新安装应使用 visual_lark_bridge.py。"""
 
-from lark_ai_bridge import *
-from lark_ai_bridge import main
+from visual_lark_bridge import *
+from visual_lark_bridge import main
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 import threading
 
-from lark_ai_bridge import (
+from visual_lark_bridge import (
     BridgeApp,
 )
 

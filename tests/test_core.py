@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from lark_ai_bridge import (
+from visual_lark_bridge import (
     BotCommand,
     DEFAULT_LARK_PROFILE,
     STREAM_CARD_SUMMARY_ID,
@@ -45,7 +45,7 @@ class CoreTest(unittest.TestCase):
             [
                 "python3",
                 "-c",
-                "import lark_ai_bridge; print(lark_ai_bridge.DEFAULT_LARK_PROFILE)",
+                "import visual_lark_bridge; print(visual_lark_bridge.DEFAULT_LARK_PROFILE)",
             ],
             cwd=module_dir,
             env=child_env,

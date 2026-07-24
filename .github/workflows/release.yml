@@ -42,6 +42,7 @@ jobs:
       - name: Verify source and tests
         run: |
           pnpm run check:sensitive
+          pnpm run check:naming
           pnpm run lint
           pnpm run format:check
           pnpm run test
@@ -57,7 +58,7 @@ jobs:
           # expected_tag 存储本次版本对应的唯一合法标签。
           expected_tag="v${version}"
           # expected_asset 存储允许公开上传的唯一安装包路径。
-          expected_asset="release/LarkAIBridge-${version}-arm64.dmg"
+          expected_asset="release/VisualLarkBridge-${version}-arm64.dmg"
           # dmg_asset_count 存储构建目录顶层的 DMG 数量。
           dmg_asset_count="$(find release -maxdepth 1 -type f -name '*.dmg' | wc -l | tr -d ' ')"
           test "$GITHUB_REF_NAME" = "$expected_tag"
@@ -73,4 +74,4 @@ jobs:
             --verify-tag \
             --generate-notes \
             --title "$GITHUB_REF_NAME" \
-            --notes "macOS 安装包未签名。首次打开请右键应用并选择“打开”；如仍被拦截，可执行：sudo xattr -rd com.apple.quarantine '/Applications/Lark AI Bridge.app'"
+            --notes "macOS 安装包使用免费 ad-hoc 完整性签名，未使用 Apple Developer ID 且未公证。首次打开请右键应用并选择“打开”；如仍被拦截，可执行：sudo xattr -rd com.apple.quarantine '/Applications/Visual Lark Bridge.app'"
