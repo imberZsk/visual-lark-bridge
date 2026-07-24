@@ -36,4 +36,21 @@ describe("ConfigStore", () => {
     expect(saved).toEqual(persisted);
     expect(persisted.secret).toBeUndefined();
   });
+
+  it("serializes concurrent partial updates without losing fields", async () => {
+    /** temporaryDirectory 存储本测试隔离的配置目录。 */
+    const temporaryDirectory = await mkdtemp(
+      path.join(os.tmpdir(), "lark-bridge-config-"),
+    );
+    /** store 存储待测试的配置仓库。 */
+    const store = new ConfigStore(temporaryDirectory);
+    await Promise.all([
+      store.update({ theme: "light" }),
+      store.update({ profile: "concurrent-bot" }),
+    ]);
+    /** persisted 存储并发更新全部完成后的磁盘配置。 */
+    const persisted = await store.read();
+    expect(persisted.theme).toBe("light");
+    expect(persisted.profile).toBe("concurrent-bot");
+  });
 });
