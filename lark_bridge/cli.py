@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
+import os
 import sys
+from pathlib import Path
+from typing import IO
 from typing import Optional
 
 
@@ -14,6 +18,29 @@ from .config import DEFAULT_LARK_PROFILE
 from .config import DEFAULT_LOG_DIR
 from .config import DEFAULT_SYSTEM_PROMPT
 from .config import DEFAULT_WORKSPACE
+
+
+# INSTANCE_LOCK_FILE 存储同一运行目录内桥接单实例锁的文件名。
+INSTANCE_LOCK_FILE = "bridge.lock"
+
+
+def acquire_instance_lock(log_dir: Path) -> IO[str]:
+    """独占锁定当前运行目录；log_dir 用于区分彼此独立的桥接配置。"""
+    log_dir.mkdir(parents=True, exist_ok=True)
+    # lock_path 存储当前桥接运行目录对应的单实例锁文件路径。
+    lock_path = log_dir / INSTANCE_LOCK_FILE
+    # lock_file 保存进程生命周期内持有的文件描述符，关闭后系统自动释放锁。
+    lock_file = lock_path.open("a+", encoding="utf-8")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        lock_file.close()
+        raise RuntimeError("同一运行目录已有桥接服务正在运行") from exc
+    lock_file.seek(0)
+    lock_file.truncate()
+    lock_file.write(f"{os.getpid()}\n")
+    lock_file.flush()
+    return lock_file
 
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -81,9 +108,12 @@ def main() -> int:
     """程序入口：创建并运行桥接应用。"""
     # args 是从命令行解析出的运行配置。
     args = parse_args()
-    # app 是桥接应用实例，负责启动和编排所有子进程。
-    app = BridgeApp(args)
+    # instance_lock 保存桥接进程持有的单实例文件锁，避免重复监听写坏任务状态。
+    instance_lock: Optional[IO[str]] = None
     try:
+        instance_lock = acquire_instance_lock(Path(args.log_dir).expanduser().resolve())
+        # app 是桥接应用实例，负责启动和编排所有子进程。
+        app = BridgeApp(args)
         app.run()
     except KeyboardInterrupt:
         print("收到中断，退出。", file=sys.stderr)
@@ -91,4 +121,7 @@ def main() -> int:
     except Exception as exc:
         print(f"桥接服务异常：{exc}", file=sys.stderr)
         return 1
+    finally:
+        if instance_lock is not None:
+            instance_lock.close()
     return 0

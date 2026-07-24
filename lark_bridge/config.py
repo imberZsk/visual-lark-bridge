@@ -59,8 +59,8 @@ CARD_HISTORY_PAGE_TURNS = 4
 CARD_HISTORY_PAGE_LIMIT = 4200
 # CARD_SUBMIT_DEDUP_SECONDS 存储 Enter 与按钮重复回调的去重时间窗口。
 CARD_SUBMIT_DEDUP_SECONDS = 2.0
-# CARD_LAYOUT_VERSION 存储当前活动卡片结构版本，用于淘汰仍带折叠面板的旧卡映射。
-CARD_LAYOUT_VERSION = 4
+# CARD_LAYOUT_VERSION 存储当前活动卡片结构版本，用于淘汰已折叠或已关闭流式模式的旧卡映射。
+CARD_LAYOUT_VERSION = 5
 # CLAUDE_CONTEXT_WINDOW 存储当前 Claude 模型默认上下文窗口，用于显示使用比例。
 CLAUDE_CONTEXT_WINDOW = 200000
 # DRY_RUN_MESSAGE_ID 存储 dry-run 模式下模拟出的机器人回复消息 ID。
