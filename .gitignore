@@ -24,6 +24,16 @@ htmlcov/
 
 # Node 产物
 node_modules/
+dist/
+release/
+build/sidecars/
+build/icon.iconset/
+build/icon-preview/
+build/pyinstaller/
+build/specs/
+build/smoke-ui.png
+build/smoke-*.png
+build/review-*.png
 coverage/
 npm-debug.log*
 

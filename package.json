@@ -1,9 +1,102 @@
 {
-  "name": "lark-claude-bridge-events",
+  "name": "visual-lark-bridge",
   "private": true,
-  "version": "1.0.0",
-  "description": "Single WebSocket event gateway for the local Lark Claude bridge",
+  "version": "0.1.0",
+  "description": "可视化管理飞书与本地 Claude Code 桥接服务的 Electron 桌面应用",
+  "productName": "Visual Lark Bridge",
+  "author": "imber",
+  "license": "MIT",
+  "packageManager": "pnpm@11.13.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "main": "electron/main.js",
+  "type": "module",
+  "scripts": {
+    "dev:vite": "vite --host 127.0.0.1 --port 5276 --strictPort",
+    "dev:electron": "wait-on tcp:5276 && cross-env NODE_ENV=development electron .",
+    "dev": "concurrently -k -n vite,electron \"pnpm run dev:vite\" \"pnpm run dev:electron\"",
+    "build": "tsc && vite build",
+    "build:ui": "tsc && vite build",
+    "build:sidecars": ".venv/bin/python scripts/build_sidecars.py",
+    "start": "pnpm run build:ui && cross-env NODE_ENV=production electron .",
+    "test": "vitest run && .venv/bin/python -m unittest discover -s tests -v",
+    "lint": "eslint . && .venv/bin/ruff check .",
+    "format:check": "prettier \"src/**/*.{ts,tsx,css}\" \"electron/**/*.{js,cjs}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.yml\" package.json CHANGELOG.md --check",
+    "check:sensitive": "bash scripts/check-sensitive-files.sh",
+    "check:naming": "bash scripts/check-product-naming.sh",
+    "verify:boot": "pnpm run build:ui && node scripts/verify-boot.mjs",
+    "dist": "pnpm run build:ui && pnpm run build:sidecars && cross-env ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/ electron-builder --mac --arm64 --publish never"
+  },
   "dependencies": {
-    "@larksuiteoapi/node-sdk": "1.71.1"
+    "@ant-design/icons": "^6.3.2",
+    "antd": "^6.5.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "43.1.0",
+    "electron-builder": "^26.15.3",
+    "eslint": "^10.7.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.7.0",
+    "happy-dom": "^20.10.6",
+    "prettier": "^3.9.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.64.0",
+    "vite": "^8.1.4",
+    "vitest": "^4.1.10",
+    "wait-on": "^9.0.10"
+  },
+  "build": {
+    "appId": "com.imber.visual-lark-bridge",
+    "productName": "Visual Lark Bridge",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/sidecars",
+        "to": "sidecars"
+      },
+      {
+        "from": "build/trayTemplate.png",
+        "to": "trayTemplate.png"
+      },
+      {
+        "from": "build/trayTemplate@2x.png",
+        "to": "trayTemplate@2x.png"
+      }
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "artifactName": "VisualLarkBridge-${version}-${arch}.${ext}",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": "arm64"
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "identity": "-"
+    },
+    "dmg": {
+      "title": "Visual Lark Bridge ${version}"
+    }
   }
 }
