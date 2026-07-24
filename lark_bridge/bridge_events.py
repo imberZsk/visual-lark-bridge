@@ -11,7 +11,6 @@ from typing import Optional
 
 
 from .cards import answer_card_input_form
-from .claude_protocol import compact_stream_preview
 from .claude_protocol import conversation_card_content
 from .claude_protocol import friendly_error_message
 from .claude_protocol import render_task_progress
@@ -334,9 +333,8 @@ class BridgeEventMixin:
         def push_progress(
             body: str,
             force: bool = False,
-            include_history: bool = False,
         ) -> None:
-            """更新当前回答；force 跳过节流，include_history 仅在定稿时恢复历史对话。"""
+            """用一致的累计正文更新当前回答；force 只跳过节流，不改变展示结构。"""
             nonlocal sequence, last_push, latest_body
             with update_lock:
                 latest_body = body
@@ -344,25 +342,17 @@ class BridgeEventMixin:
                 now = time.monotonic()
                 if not force and now - last_push < STREAM_MIN_INTERVAL:
                     return
-                # visible_history 存储本次要渲染的历史；生成期间为空，避免旧内容随 token 重复刷新。
-                visible_history = previous_history if include_history else []
-                # conversation_body 存储本轮实时回答，定稿时才补回此前轮次。
+                # conversation_body 始终包含同一份历史与本轮累计正文，避免心跳或定稿切换结构造成流式内容回退重播。
                 conversation_body = conversation_card_content(
-                    visible_history, message.text, body, paginate=False
+                    previous_history, message.text, body, paginate=False
                 )
                 # progress_content 存储带任务元数据头的当前可见对话。
                 progress_content = render_task_progress(
                     task, conversation_body, started_at
                 )
-                # preview_content 存储生成中的紧凑实时预览；最终调用会传完整答案并强制刷新。
-                preview_content = (
-                    compact_stream_preview(progress_content)
-                    if not force
-                    else progress_content
-                )
                 if self._stream_card_content(
                     card_id,
-                    preview_content,
+                    progress_content,
                     sequence,
                     element_id=STREAM_CARD_SUMMARY_ID,
                 ):
@@ -404,7 +394,7 @@ class BridgeEventMixin:
             heartbeat_stop.set()
             heartbeat_thread.join(timeout=2)
 
-        push_progress(answer, force=True, include_history=True)
+        push_progress(answer, force=True)
         # 卡片保持 streaming_mode，后续表单提问才能继续流式更新同一 CardKit 实体。
         self.task_cards[task.task_id] = (card_id, card_message_id, sequence)
         self._save_task_cards()

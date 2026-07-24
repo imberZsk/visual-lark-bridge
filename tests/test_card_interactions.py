@@ -87,10 +87,10 @@ class CardInteractionTest(unittest.TestCase):
                 )
 
         self.assertTrue(handled)
-        # interim_contents 存储初始状态帧和 Claude 增量帧，二者都不应重复旧历史。
+        # interim_contents 存储初始状态帧和 Claude 增量帧，必须保持与终稿一致的连续对话结构。
         interim_contents = [item[0] for item in streamed_contents[:-1]]
-        self.assertTrue(all("旧问题" not in content for content in interim_contents))
-        self.assertTrue(all("旧回答" not in content for content in interim_contents))
+        self.assertTrue(all("旧问题" in content for content in interim_contents))
+        self.assertTrue(all("旧回答" in content for content in interim_contents))
         self.assertIn("新问题", streamed_contents[1][0])
         self.assertIn("新回答增量", streamed_contents[1][0])
         # final_content 存储定稿帧，完成后应恢复旧历史并保留本轮终稿。
