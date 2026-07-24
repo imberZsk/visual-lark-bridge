@@ -2,6 +2,7 @@
 
 ## 0.1.0 - 2026-07-23
 
+- 为 macOS 隐藏标题栏补充独立顶部拖拽区域，窗口可通过顶部留白移动。
 - 将项目、应用、数据目录、服务标识、Bundle ID、sidecar 和安装包统一重命名为 Visual Lark Bridge / `visual-lark-bridge`，不迁移旧产品数据。
 - 使用新的紫色应用 Logo，并为 macOS 菜单栏提供透明单色桥接图标。
 - 参考 Visual Worktree 的 Ant Design 默认主题体系，重新调整亮色、暗色与交互状态配色。

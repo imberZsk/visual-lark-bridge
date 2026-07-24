@@ -38,6 +38,7 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
 
   return (
     <Layout className="app-shell">
+      <div className="window-drag-region" aria-hidden="true" />
       <AppSidebar
         activeView={activeView}
         serviceState={controller.snapshot.service.state}

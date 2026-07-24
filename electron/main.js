@@ -155,6 +155,17 @@ async function bootstrap() {
         check();
       })
     `);
+    /** dragRegionReady 标记顶部预留区域是否已启用 Electron 窗口拖拽。 */
+    const dragRegionReady = await mainWindow.webContents.executeJavaScript(`
+      (() => {
+        // dragRegion 存储渲染进程中的窗口拖拽层。
+        const dragRegion = document.querySelector('.window-drag-region');
+        if (!dragRegion) return false;
+        // dragStyle 存储拖拽层经过 CSS 计算后的最终样式。
+        const dragStyle = getComputedStyle(dragRegion);
+        return dragStyle.getPropertyValue('-webkit-app-region') === 'drag';
+      })()
+    `);
     /** requestedView 存储冒烟截图需要打开的页面。 */
     const requestedView = process.env.LARK_BRIDGE_SMOKE_VIEW;
     if (requestedView === "settings" || requestedView === "logs") {
@@ -216,7 +227,9 @@ async function bootstrap() {
         screenshot.toPNG(),
       );
     }
-    console.log(preloadReady && uiReady ? "SMOKE_OK" : "SMOKE_FAILED");
+    console.log(
+      preloadReady && uiReady && dragRegionReady ? "SMOKE_OK" : "SMOKE_FAILED",
+    );
     isQuitting = true;
     app.quit();
     return;
