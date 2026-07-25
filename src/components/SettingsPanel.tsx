@@ -44,7 +44,19 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
           <Form.Item name="workspacePath" label="Claude 工作目录">
             <Input placeholder="默认使用应用数据目录" />
           </Form.Item>
-          <Form.Item name="claudeTimeout" label="响应超时（秒）">
+          <Form.Item
+            name="claudeTimeout"
+            label="响应超时（秒）"
+            rules={[
+              {
+                type: "number",
+                min: 30,
+                max: 1800,
+                message: "响应超时必须在 30 到 1800 秒之间",
+              },
+            ]}
+          >
+            {/* InputNumber 的 min/max 不会阻止键盘输入越界值，表单规则负责阻止非法配置提交。 */}
             <InputNumber min={30} max={1800} />
           </Form.Item>
         </div>

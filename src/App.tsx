@@ -37,11 +37,10 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
   const [activeView, setActiveView] = useState<ViewKey>("service");
 
   useEffect(() => {
-    // 磁盘配置优先于首屏 localStorage 缓存，确保多次重启后的主题一致。
-    if (controller.snapshot?.config.theme !== themeMode) {
-      onThemeChange(controller.snapshot?.config.theme ?? themeMode);
-    }
-  }, [controller.snapshot?.config.theme, onThemeChange, themeMode]);
+    // 仅在磁盘快照变化时同步主题；依赖当前 themeMode 会把用户刚点击的新主题立即改回旧快照值。
+    const configuredTheme = controller.snapshot?.config.theme;
+    if (configuredTheme) onThemeChange(configuredTheme);
+  }, [controller.snapshot?.config.theme, onThemeChange]);
 
   if (!controller.snapshot) {
     return (
