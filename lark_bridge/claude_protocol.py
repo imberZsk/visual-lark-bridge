@@ -246,8 +246,13 @@ def conversation_card_content(
     return content
 
 
-def render_task_progress(task: ClaudeTask, body: str, started_at: float) -> str:
-    """渲染任务阶段、耗时、模型、上下文和当前正文。"""
+def render_task_meta(task: ClaudeTask, started_at: float) -> str:
+    """仅渲染任务元数据头（任务名·阶段·耗时·模型·上下文），不含对话正文。
+
+    元数据必须与对话正文分处不同 CardKit 元素：元数据每帧都会变化（尤其耗时秒数），
+    若与正文同处一个流式元素，其变化会打断飞书对正文的公共前缀 diff，导致已完成的
+    历史轮次被当成新内容重新逐字重播。
+    """
     # elapsed_seconds 存储本轮从开始到当前的整数秒数。
     elapsed_seconds = max(0, int(time.monotonic() - started_at))
     # session 存储当前任务的 Claude 会话对象。
@@ -273,9 +278,15 @@ def render_task_progress(task: ClaudeTask, body: str, started_at: float) -> str:
     )
     return (
         f"**{task.task_id} · {task.title}**\n"
-        f"`{phase}` · {elapsed_seconds}s · `{model}` · 上下文 {context_percent}%\n\n"
-        f"{format_lark_markdown(body)}"
+        f"`{phase}` · {elapsed_seconds}s · `{model}` · 上下文 {context_percent}%"
     )
+
+
+def render_task_progress(task: ClaudeTask, body: str, started_at: float) -> str:
+    """渲染任务元数据头 + 正文的合并文本；供非流式或单元素回退场景使用。"""
+    # meta 存储任务元数据头（阶段·耗时·模型·上下文）。
+    meta = render_task_meta(task, started_at)
+    return f"{meta}\n\n{format_lark_markdown(body)}"
 
 
 def friendly_error_message(exc: Exception) -> str:

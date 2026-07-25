@@ -9,6 +9,7 @@ from visual_lark_bridge import (
     ClaudeTaskManager,
     DEFAULT_LARK_PROFILE,
     DEFAULT_PROCESSING_TEXT,
+    STREAM_CARD_META_ID,
     STREAM_CARD_SUMMARY_ID,
     answer_card_actions,
     build_lark_consume_args,
@@ -62,11 +63,16 @@ class CardBuilderTest(unittest.TestCase):
         # card 是解析后的卡片 JSON，用来断言流式模式和元素 ID。
         card = json.loads(payload["data"])
         self.assertTrue(card["config"]["streaming_mode"])
+        # 首个元素是独立的元数据头，建卡时为空，避免其变化打断正文流式前缀。
         self.assertEqual(
-            card["body"]["elements"][0]["element_id"], STREAM_CARD_SUMMARY_ID
+            card["body"]["elements"][0]["element_id"], STREAM_CARD_META_ID
+        )
+        # 第二个元素是对话正文，建卡时显示处理占位文本。
+        self.assertEqual(
+            card["body"]["elements"][1]["element_id"], STREAM_CARD_SUMMARY_ID
         )
         self.assertEqual(
-            card["body"]["elements"][0]["content"], DEFAULT_PROCESSING_TEXT
+            card["body"]["elements"][1]["content"], DEFAULT_PROCESSING_TEXT
         )
         # component_tags 存储卡片全部顶层组件类型，用于确认没有多余折叠全文区。
         component_tags = [element["tag"] for element in card["body"]["elements"]]

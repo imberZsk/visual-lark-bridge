@@ -12,9 +12,10 @@ from .cards import build_answer_card_json
 from .cards import build_task_list_card
 from .claude_protocol import conversation_card_content
 from .claude_protocol import format_lark_markdown
-from .claude_protocol import render_task_progress
+from .claude_protocol import render_task_meta
 from .config import CARD_HISTORY_PAGE_TURNS
 from .config import CARD_SUBMIT_DEDUP_SECONDS
+from .config import STREAM_CARD_META_ID
 from .config import STREAM_CARD_SUMMARY_ID
 from .lark_commands import build_lark_create_custom_card_args
 from .lark_commands import build_lark_delayed_card_update_args
@@ -315,14 +316,19 @@ class BridgeActionMixin:
         )
         # started_at 存储即时渲染元数据所需的基准时刻，使历史翻页耗时显示为零。
         started_at = time.monotonic()
-        # card_content 存储带任务状态元数据的历史页正文。
-        card_content = render_task_progress(task, history_content, started_at)
+        # meta_content 存储独立的任务元数据头，与正文分处不同元素。
+        meta_content = render_task_meta(task, started_at)
+        # 元数据头与历史正文分别写入各自元素，序号独立且严格递增。
         if not self._stream_card_content(
-            card_id, card_content, sequence, element_id=STREAM_CARD_SUMMARY_ID
+            card_id, meta_content, sequence, element_id=STREAM_CARD_META_ID
+        ):
+            return False
+        if not self._stream_card_content(
+            card_id, history_content, sequence + 1, element_id=STREAM_CARD_SUMMARY_ID
         ):
             return False
         self.task_history_pages[task_id] = target_page
-        self.task_cards[task_id] = (card_id, card_message_id, sequence + 1)
+        self.task_cards[task_id] = (card_id, card_message_id, sequence + 2)
         self._save_task_cards()
         return True
 
