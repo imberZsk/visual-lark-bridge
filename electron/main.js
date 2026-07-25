@@ -18,6 +18,8 @@ const APP_DATA_DIRECTORY = "visual-lark-bridge";
 const isDevelopment = process.env.NODE_ENV === "development";
 /** isSmokeTest 标记当前是否执行自动启动验证。 */
 const isSmokeTest = process.env.LARK_BRIDGE_SMOKE === "1";
+/** isE2eTest 标记当前是否使用隔离的 Playwright IPC 实现。 */
+const isE2eTest = process.env.LARK_BRIDGE_E2E === "1";
 /** TRAY_ICON_FILE 存储 macOS 菜单栏模板图标的文件名。 */
 const TRAY_ICON_FILE = "trayTemplate.png";
 
@@ -35,6 +37,10 @@ let isQuitting = false;
 
 /** createWindow 创建安全隔离的控制台窗口。 */
 async function createWindow() {
+  /** preloadPath 存储生产安全 API 或仅测试使用的隔离 API 路径。 */
+  const preloadPath = isE2eTest
+    ? path.join(projectRoot, "e2e", "mockPreload.cjs")
+    : path.join(currentDirectory, "preload.cjs");
   /** window 存储新建的浏览器窗口。 */
   const window = new BrowserWindow({
     width: 1080,
@@ -45,7 +51,7 @@ async function createWindow() {
     titleBarStyle: "hiddenInset",
     backgroundColor: "#f5f7f8",
     webPreferences: {
-      preload: path.join(currentDirectory, "preload.cjs"),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
