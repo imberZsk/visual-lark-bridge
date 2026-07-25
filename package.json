@@ -21,6 +21,9 @@
     "build:sidecars": ".venv/bin/python scripts/build_sidecars.py",
     "start": "pnpm run build:ui && cross-env NODE_ENV=production electron .",
     "test": "vitest run && .venv/bin/python -m unittest discover -s tests -v",
+    "test:e2e": "pnpm run build:ui && playwright test",
+    "test:e2e:headed": "pnpm run build:ui && playwright test --headed",
+    "test:e2e:ui": "pnpm run build:ui && playwright test --ui",
     "lint": "eslint . && .venv/bin/ruff check .",
     "format:check": "prettier \"src/**/*.{ts,tsx,css}\" \"electron/**/*.{js,cjs}\" \"scripts/**/*.{js,mjs}\" \".github/workflows/*.yml\" package.json CHANGELOG.md --check",
     "check:sensitive": "bash scripts/check-sensitive-files.sh",
@@ -36,6 +39,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^26.1.1",

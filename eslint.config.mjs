@@ -30,7 +30,7 @@ const config = tseslint.config(
     languageOptions: { globals: globals.node },
   },
   {
-    files: ["electron/preload.cjs"],
+    files: ["electron/preload.cjs", "e2e/mockPreload.cjs"],
     languageOptions: { globals: globals.node },
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },

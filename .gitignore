@@ -24,6 +24,8 @@ htmlcov/
 
 # Node 产物
 node_modules/
+playwright-report/
+test-results/
 dist/
 release/
 build/sidecars/
