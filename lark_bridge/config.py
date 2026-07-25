@@ -45,8 +45,12 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 # DEFAULT_PROCESSING_TEXT 存储长耗时 Claude 回答开始前展示给飞书用户的占位文本。
 DEFAULT_PROCESSING_TEXT = "AI思考中..."
-# STREAM_CARD_SUMMARY_ID 是流式卡片默认可见的紧凑预览元素 ID。
+# STREAM_CARD_SUMMARY_ID 是流式卡片承载对话正文（历史轮次 + 当前轮）的元素 ID。
 STREAM_CARD_SUMMARY_ID = "md_summary"
+# STREAM_CARD_META_ID 是流式卡片承载任务元数据头（阶段·耗时·模型·上下文）的独立元素 ID。
+# 元数据每帧都在变（尤其耗时秒数），必须与对话正文分处不同元素；否则元数据的变化会打断
+# 飞书流式渲染对正文元素的“公共前缀 diff”，导致已完成的历史轮次被当作新内容重新逐字重播。
+STREAM_CARD_META_ID = "md_meta"
 # STREAM_MIN_INTERVAL 是两次流式追加之间的最小间隔秒数，用来节流避免频繁打飞书接口触发限流。
 STREAM_MIN_INTERVAL = 0.8
 # STREAM_HEARTBEAT_INTERVAL 存储长任务无新 token 时刷新耗时状态的秒数。

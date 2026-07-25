@@ -11,6 +11,7 @@ from typing import Optional
 from .cards import answer_card_actions
 from .cards import answer_card_input_form
 from .config import DEFAULT_PROCESSING_TEXT
+from .config import STREAM_CARD_META_ID
 from .config import STREAM_CARD_SUMMARY_ID
 import sys
 
@@ -155,6 +156,12 @@ def build_lark_create_card_args(
             "padding": "12px 12px 20px 12px",
             "vertical_spacing": "large",
             "elements": [
+                # 元数据头独立成元素，与正文分离，避免其每帧变化打断正文的流式公共前缀 diff。
+                {
+                    "tag": "markdown",
+                    "content": "",
+                    "element_id": STREAM_CARD_META_ID,
+                },
                 # 建卡时先显示处理状态，避免 Claude 首个 token 到达前飞书出现大块空白。
                 {
                     "tag": "markdown",

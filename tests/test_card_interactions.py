@@ -11,13 +11,14 @@ from visual_lark_bridge import (
     BridgeApp,
     LarkMessage,
     DEFAULT_LARK_PROFILE,
+    STREAM_CARD_META_ID,
     STREAM_CARD_SUMMARY_ID,
 )
 
 
 class CardInteractionTest(unittest.TestCase):
-    def test_streaming_card_clears_input_and_hides_history_until_final_frame(self):
-        """卡片续问应清空输入，且流式帧只显示本轮内容，定稿时才恢复历史。"""
+    def test_streaming_card_clears_input_and_splits_meta_from_body(self):
+        """卡片续问应清空输入，且元数据头与对话正文分处不同元素，避免历史被重复流式重播。"""
         with tempfile.TemporaryDirectory() as tmp:
             # args 存储流式卡片回归测试所需的桥接应用配置。
             args = SimpleNamespace(
@@ -87,23 +88,190 @@ class CardInteractionTest(unittest.TestCase):
                 )
 
         self.assertTrue(handled)
-        # interim_contents 存储初始状态帧和 Claude 增量帧，必须保持与终稿一致的连续对话结构。
-        interim_contents = [item[0] for item in streamed_contents[:-1]]
-        self.assertTrue(all("旧问题" in content for content in interim_contents))
-        self.assertTrue(all("旧回答" in content for content in interim_contents))
-        self.assertIn("新问题", streamed_contents[1][0])
-        self.assertIn("新回答增量", streamed_contents[1][0])
-        # final_content 存储定稿帧，完成后应恢复旧历史并保留本轮终稿。
-        final_content = streamed_contents[-1][0]
-        self.assertIn("旧问题", final_content)
-        self.assertIn("旧回答", final_content)
-        self.assertIn("新问题", final_content)
-        self.assertIn("新回答终稿", final_content)
+        # body_frames 存储写入对话正文元素的帧，meta_frames 存储写入元数据元素的帧。
+        body_frames = [
+            content
+            for content, _seq, element_id in streamed_contents
+            if element_id == STREAM_CARD_SUMMARY_ID
+        ]
+        meta_frames = [
+            content
+            for content, _seq, element_id in streamed_contents
+            if element_id == STREAM_CARD_META_ID
+        ]
+        # 正文帧从第一帧起就带上历史前缀，历史作为稳定前缀不会被当作新内容重新流式重播。
+        self.assertTrue(body_frames)
+        self.assertTrue(all("旧问题" in content for content in body_frames))
+        self.assertTrue(all("旧回答" in content for content in body_frames))
+        # 元数据头单独成帧且不混入对话正文，其每帧变化不会打断正文元素的公共前缀。
+        self.assertTrue(meta_frames)
+        self.assertTrue(all("旧问题" not in content for content in meta_frames))
+        self.assertTrue(all("新回答增量" not in content for content in meta_frames))
+        # 本轮新问题与增量、终稿都进入对话正文元素。
+        self.assertTrue(any("新问题" in content for content in body_frames))
+        self.assertTrue(any("新回答增量" in content for content in body_frames))
+        # final_body 存储对话正文的定稿帧，应同时保留旧历史与本轮终稿。
+        final_body = body_frames[-1]
+        self.assertIn("旧问题", final_body)
+        self.assertIn("旧回答", final_body)
+        self.assertIn("新问题", final_body)
+        self.assertIn("新回答终稿", final_body)
+        # 每个元素自身的更新序号必须严格递增，飞书据此保证同元素多次更新的顺序。
+        summary_sequences = [
+            seq
+            for _content, seq, element_id in streamed_contents
+            if element_id == STREAM_CARD_SUMMARY_ID
+        ]
+        self.assertEqual(summary_sequences, sorted(set(summary_sequences)))
         replace_element.assert_called_once()
         # cleared_input 存储用于替换原输入框的空白 CardKit 输入组件。
         cleared_input = replace_element.call_args.args[2]
         self.assertEqual(cleared_input["element_id"], f"chat_form_{task.task_id}")
         self.assertEqual(cleared_input["default_value"], "")
+
+    def test_consecutive_turns_do_not_replay_completed_answers(self):
+        """连续第二、第三轮提问时，已完成轮次不得作为新内容重新流式重播。
+
+        重播的充要条件是：正文元素在同一轮内出现“前缀回退”——即某一帧的正文不再以
+        上一帧正文为前缀（历史被重排或混入了每帧都变的元数据）。本用例连续复用同一张卡
+        提问三轮，断言每一轮内正文元素的相邻帧始终保持前缀单调增长，且元数据从不混入正文。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            # args 存储多轮回归测试所需的桥接应用配置。
+            args = SimpleNamespace(
+                log_dir=str(Path(tmp) / "logs"),
+                workspace=str(Path(tmp) / "workspace"),
+                system_prompt="测试提示",
+                claude_timeout=5,
+                lark_identity="bot",
+                lark_profile=DEFAULT_LARK_PROFILE,
+                reply_identity="bot",
+                dry_run=True,
+                once=False,
+            )
+            # app 存储被测桥接应用。
+            app = BridgeApp(args)
+            app.task_manager.create_task("ou_user", "连续对话")
+            # task_id 存储连续对话任务标识。
+            task_id = app.task_manager.current_task_id_for_sender("ou_user")
+            # task 存储目标任务，三轮提问复用同一张已有卡片。
+            task = app.task_manager.tasks[task_id]
+            app.task_cards[task.task_id] = ("card_existing", "om_existing", 1)
+
+            def make_answer(turn_index):
+                """构造第 turn_index 轮的 Claude 回复：先推增量再返回终稿，并模拟真实落库。"""
+
+                def answer_with_delta(inner_task_id, question, on_delta=None):
+                    if on_delta is not None:
+                        # 分两段推送，制造轮内多帧，便于检验前缀单调。
+                        on_delta(f"第{turn_index}轮回答前半")
+                        on_delta(f"第{turn_index}轮回答前半 第{turn_index}轮回答后半")
+                    # final 存储本轮终稿。
+                    final = f"第{turn_index}轮回答终稿"
+                    # 真实 task_manager.ask_task 会把完成轮次落库；mock 同样落库以复现跨轮历史。
+                    app.task_manager.tasks[inner_task_id].conversation_history.append(
+                        {"question": question, "answer": final}
+                    )
+                    return final
+
+                return answer_with_delta
+
+            # summary_frames_per_turn 存储每一轮写入正文元素的帧序列。
+            summary_frames_per_turn = []
+            # meta_frames_per_turn 存储每一轮写入元数据元素的帧序列。
+            meta_frames_per_turn = []
+
+            for turn_index in range(1, 4):
+                # current_summary、current_meta 存储本轮各元素收到的帧内容。
+                current_summary = []
+                current_meta = []
+
+                def record_stream(
+                    card_id,
+                    content,
+                    sequence,
+                    element_id=STREAM_CARD_SUMMARY_ID,
+                    _summary=current_summary,
+                    _meta=current_meta,
+                ):
+                    """按元素分别记录本轮流式帧。"""
+                    if element_id == STREAM_CARD_SUMMARY_ID:
+                        _summary.append(content)
+                    elif element_id == STREAM_CARD_META_ID:
+                        _meta.append(content)
+                    return True
+
+                # message 存储本轮从卡片输入框提交的问题。
+                message = LarkMessage(
+                    event_id=f"evt_turn_{turn_index}",
+                    message_id="om_existing",
+                    text=f"第{turn_index}个问题",
+                    sender_id="ou_user",
+                    chat_id="oc_chat",
+                    chat_type="p2p",
+                )
+                with (
+                    mock.patch("lark_bridge.bridge_events.STREAM_MIN_INTERVAL", 0),
+                    mock.patch.object(
+                        app, "_stream_card_content", side_effect=record_stream
+                    ),
+                    mock.patch.object(app, "_replace_card_element", return_value=True),
+                    mock.patch.object(
+                        app.task_manager,
+                        "ask_task",
+                        side_effect=make_answer(turn_index),
+                    ),
+                    mock.patch.object(app, "_save_task_cards"),
+                ):
+                    handled = app._handle_event_streaming(
+                        message,
+                        task_id=task.task_id,
+                        track_source_message=False,
+                        clear_input=True,
+                    )
+                self.assertTrue(handled)
+                summary_frames_per_turn.append(current_summary)
+                meta_frames_per_turn.append(current_meta)
+
+            # 校验每一轮：当前轮答案“之前”的内容（历史 + 当前问题）必须是稳定前缀，不得回退。
+            # 当前轮答案本身逐帧增长属于正常流式（只重播当前轮）；但历史+当前问题这段前缀一旦
+            # 回退，就会把已完成的历史轮次也拖进飞书的重新逐字重播，正是本 bug 的根因。
+            for turn_index, frames in enumerate(summary_frames_per_turn, start=1):
+                self.assertTrue(frames, f"第{turn_index}轮应有正文帧")
+                # stable_prefix 存储“当前问题 + Claude 标记”截止处，之前的历史与问题不应变化。
+                marker = f"第{turn_index}个问题"
+                for frame in frames:
+                    self.assertIn(
+                        marker,
+                        frame,
+                        f"第{turn_index}轮正文帧缺少当前问题标记：{frame!r}",
+                    )
+                # baseline_prefix 存储首帧中截至当前问题标记结束的稳定前缀。
+                baseline_prefix = frames[0][
+                    : frames[0].index(marker) + len(marker)
+                ]
+                for frame in frames:
+                    self.assertTrue(
+                        frame.startswith(baseline_prefix),
+                        f"第{turn_index}轮历史/问题前缀发生回退，会触发历史重播：\n"
+                        f"期望前缀={baseline_prefix!r}\n实际帧={frame!r}",
+                    )
+
+            # 校验从第二轮起，本轮定稿正文包含此前所有轮次的完整历史（历史可见但不重播）。
+            second_turn_final = summary_frames_per_turn[1][-1]
+            self.assertIn("第1个问题", second_turn_final)
+            self.assertIn("第1轮回答终稿", second_turn_final)
+            self.assertIn("第2个问题", second_turn_final)
+            third_turn_final = summary_frames_per_turn[2][-1]
+            self.assertIn("第1轮回答终稿", third_turn_final)
+            self.assertIn("第2轮回答终稿", third_turn_final)
+            self.assertIn("第3个问题", third_turn_final)
+
+            # 校验元数据从不混入正文元素：正文帧不含耗时秒数标记，元数据帧不含历史答案。
+            for frames in summary_frames_per_turn:
+                self.assertTrue(all("上下文" not in frame for frame in frames))
+            for frames in meta_frames_per_turn:
+                self.assertTrue(all("回答终稿" not in frame for frame in frames))
 
     def test_card_chat_submit_routes_to_bound_task(self):
         """从旧卡提交问题时应进入该卡绑定的任务，而不是当前选中的另一任务。"""

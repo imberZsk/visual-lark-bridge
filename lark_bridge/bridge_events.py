@@ -13,8 +13,9 @@ from typing import Optional
 from .cards import answer_card_input_form
 from .claude_protocol import conversation_card_content
 from .claude_protocol import friendly_error_message
-from .claude_protocol import render_task_progress
+from .claude_protocol import render_task_meta
 from .config import DEFAULT_PROCESSING_TEXT
+from .config import STREAM_CARD_META_ID
 from .config import STREAM_CARD_SUMMARY_ID
 from .config import STREAM_HEARTBEAT_INTERVAL
 from .config import STREAM_MIN_INTERVAL
@@ -333,7 +334,13 @@ class BridgeEventMixin:
             body: str,
             force: bool = False,
         ) -> None:
-            """用一致的累计正文更新当前回答；force 只跳过节流，不改变展示结构。"""
+            """更新当前回答；元数据头与对话正文分别写入不同元素。
+
+            正文元素 md_summary 始终按“历史 + 当前轮”累计，历史部分作为稳定前缀不会回退，
+            飞书只对新增的当前轮尾部做逐字流式；易变的元数据头单独写入 md_meta，其每帧变化
+            不再打断正文的公共前缀 diff，因此第二轮及以后不会把上一轮已完成内容重新流式重播。
+            force 只跳过节流，不改变展示结构。
+            """
             nonlocal sequence, last_push, latest_body
             with update_lock:
                 latest_body = body
@@ -341,17 +348,23 @@ class BridgeEventMixin:
                 now = time.monotonic()
                 if not force and now - last_push < STREAM_MIN_INTERVAL:
                     return
-                # conversation_body 始终包含同一份历史与本轮累计正文，避免心跳或定稿切换结构造成流式内容回退重播。
+                # meta_content 存储独立的任务元数据头（阶段·耗时·模型·上下文）。
+                meta_content = render_task_meta(task, started_at)
+                # conversation_body 始终包含同一份历史与本轮累计正文，历史前缀保持稳定。
                 conversation_body = conversation_card_content(
                     previous_history, message.text, body, paginate=False
                 )
-                # progress_content 存储带任务元数据头的当前可见对话。
-                progress_content = render_task_progress(
-                    task, conversation_body, started_at
-                )
+                # 先更新元数据元素，再更新正文元素；两者各自使用独立且严格递增的序号。
                 if self._stream_card_content(
                     card_id,
-                    progress_content,
+                    meta_content,
+                    sequence,
+                    element_id=STREAM_CARD_META_ID,
+                ):
+                    sequence += 1
+                if self._stream_card_content(
+                    card_id,
+                    conversation_body,
                     sequence,
                     element_id=STREAM_CARD_SUMMARY_ID,
                 ):
