@@ -57,7 +57,10 @@ async function createWindow() {
       sandbox: true,
     },
   });
-  window.once("ready-to-show", () => window.show());
+  window.once("ready-to-show", () => {
+    // 冒烟和 E2E 仍使用真实渲染进程，但不得显示窗口或抢占用户焦点。
+    if (!isSmokeTest && !isE2eTest) window.show();
+  });
   window.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -115,6 +118,8 @@ function createTray() {
 /** bootstrap 在 Electron ready 后初始化服务、IPC、窗口和菜单栏。 */
 async function bootstrap() {
   if (isSmokeTest) console.log("SMOKE_STAGE:after-ready");
+  // macOS E2E 隐藏 Dock，并跳过托盘图标，避免后台测试影响用户桌面。
+  if (isE2eTest) app.dock?.hide();
   /** userDataPath 存储所有可变配置、日志与工作区的目录。 */
   const userDataPath = app.getPath("userData");
   /** configStore 存储配置持久化服务。 */
@@ -142,7 +147,7 @@ async function bootstrap() {
   });
   mainWindow = await createWindow();
   if (isSmokeTest) console.log("SMOKE_STAGE:window-loaded");
-  tray = createTray();
+  if (!isE2eTest) tray = createTray();
 
   if (isSmokeTest) {
     /** preloadReady 存储生产窗口是否成功暴露安全 API。 */
@@ -269,7 +274,8 @@ app
 app.on("activate", async () => {
   if (!mainWindow || mainWindow.isDestroyed())
     mainWindow = await createWindow();
-  mainWindow.show();
+  // E2E 期间 macOS activate 事件也不能重新显示隐藏的测试窗口。
+  if (!isSmokeTest && !isE2eTest) mainWindow.show();
 });
 app.on("before-quit", async () => {
   isQuitting = true;
