@@ -1,6 +1,17 @@
 import { expect } from "@playwright/test";
 import { e2eTest, readCalls } from "./helpers/electronApp";
 
+/** STRUCTURED_LOG_SAMPLE 存储覆盖默认分页和 JSON 解析的日志样本。 */
+const STRUCTURED_LOG_SAMPLE = [
+  "[2026-07-28T08:00:00] oldest entry",
+  ...Array.from(
+    { length: 104 },
+    (_, index) =>
+      `[2026-07-28T08:${String(index).padStart(2, "0")}] entry ${index}`,
+  ),
+  '[2026-07-28T10:00:00] 收到原始飞书事件：{"event_id":"evt_json","chat_id":"oc_test"}',
+].join("\n");
+
 e2eTest("设置页回显默认配置", {}, async (page) => {
   await page.getByText("设置", { exact: true }).click();
   await expect(page.getByRole("textbox", { name: "飞书 Profile" })).toHaveValue(
@@ -92,5 +103,24 @@ e2eTest(
       .last()
       .click();
     await expect(page.getByText("暂无日志", { exact: true })).toBeVisible();
+  },
+);
+
+e2eTest(
+  "日志支持查询分页解析和复制 JSON",
+  { logs: STRUCTURED_LOG_SAMPLE },
+  async (page) => {
+    await page.getByText("日志", { exact: true }).click();
+    await expect(page.getByText("显示最近 100 条，共 106 条")).toBeVisible();
+    await expect(page.getByText("oldest entry")).not.toBeVisible();
+    await page.getByPlaceholder("查询日志内容或 JSON 字段").fill("evt_json");
+    await expect(page.getByText("找到 1 条日志")).toBeVisible();
+    await page.getByRole("button", { name: "解析 JSON" }).click();
+    await expect(page.getByText('"event_id": "evt_json"')).toBeVisible();
+    await page.getByRole("button", { name: "复制 JSON" }).click();
+    await expect(page.getByText("JSON 已复制")).toBeVisible();
+    await page.getByPlaceholder("查询日志内容或 JSON 字段").clear();
+    await page.getByRole("button", { name: /显示更早日志/ }).click();
+    await expect(page.getByText("oldest entry")).toBeVisible();
   },
 );

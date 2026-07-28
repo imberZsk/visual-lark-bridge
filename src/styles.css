@@ -299,11 +299,29 @@ input {
   margin-bottom: 10px;
 }
 
-.logs-panel pre {
+.logs-toolbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.logs-toolbar .ant-input-search {
+  max-width: 520px;
+}
+
+.logs-content {
   min-height: 340px;
-  max-height: calc(100vh - 175px);
-  margin: 0;
-  padding: 12px;
+}
+
+.logs-summary {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.log-list {
+  max-height: calc(100vh - 235px);
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -314,7 +332,63 @@ input {
     SFMono-Regular,
     Menlo,
     monospace;
+}
+
+.log-entry {
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+
+.log-entry:last-child {
+  border-bottom: 0;
+}
+
+.log-entry-main {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 28px;
+  align-items: start;
+  min-height: 30px;
+  padding: 6px 8px;
+}
+
+.log-entry-main time {
+  color: #8c8c8c;
+}
+
+.log-entry-main span {
+  overflow-wrap: anywhere;
   white-space: pre-wrap;
+}
+
+.log-entry-main .ant-btn {
+  color: #bfbfbf;
+}
+
+.log-json-view {
+  position: relative;
+  border-top: 1px solid rgb(255 255 255 / 8%);
+  background: #0a0a0a;
+}
+
+.log-json-view > .ant-btn {
+  position: absolute;
+  z-index: 1;
+  top: 4px;
+  right: 5px;
+  color: #bfbfbf;
+}
+
+.log-json-view pre {
+  max-height: 320px;
+  margin: 0;
+  padding: 10px 42px 10px 12px;
+  overflow: auto;
+  color: #d9d9d9;
+  white-space: pre-wrap;
+}
+
+.load-more-logs {
+  display: block;
+  margin: 10px auto 0;
 }
 
 .panel-actions {
