@@ -65,7 +65,10 @@ describe("ConfigStore", () => {
     const saved = await store.write({
       news: {
         enabled: true,
+        delivery_type: "webhook",
         chat_id: "invalid",
+        webhook_url:
+          "https://open.feishu.cn/open-apis/bot/v2/hook/test-webhook-id",
         times: ["09:07", "25:00", "09:07"],
         sources: [
           { name: "Valid", url: "https://example.com/rss" },
@@ -76,7 +79,10 @@ describe("ConfigStore", () => {
     });
     expect(saved.news).toEqual({
       enabled: true,
+      delivery_type: "webhook",
       chat_id: "",
+      webhook_url:
+        "https://open.feishu.cn/open-apis/bot/v2/hook/test-webhook-id",
       times: ["09:07"],
       sources: [{ name: "Valid", url: "https://example.com/rss" }],
       max_items: 20,

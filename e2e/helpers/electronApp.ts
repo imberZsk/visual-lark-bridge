@@ -18,11 +18,11 @@ export const DEFAULT_SNAPSHOT = {
     theme: "dark",
     news: {
       enabled: false,
+      delivery_type: "chat",
       chat_id: "",
+      webhook_url: "",
       times: ["09:07"],
-      sources: [
-        { name: "Hacker News", url: "https://hnrss.org/frontpage" },
-      ],
+      sources: [{ name: "Hacker News", url: "https://hnrss.org/frontpage" }],
       max_items: 8,
     },
   },

@@ -35,7 +35,11 @@ class BridgeApp(
         self.processed_event_ids: set[str] = set()
         # task_manager 管理多个独立 Claude 任务窗口。
         # session_factory 根据桌面端选择创建 Claude 或 Codex 会话。
-        session_factory = ClaudeStreamSession if getattr(args, "provider", "claude") == "claude" else CodexSession
+        session_factory = (
+            ClaudeStreamSession
+            if getattr(args, "provider", "claude") == "claude"
+            else CodexSession
+        )
         self.task_manager = ClaudeTaskManager(
             workspace_root=Path(args.workspace).expanduser().resolve(),
             log_dir=self.log_dir,
@@ -79,7 +83,8 @@ class BridgeApp(
                 workspace=self.task_manager.workspace_root,
                 provider=getattr(args, "provider", "claude"),
                 codex_model=getattr(args, "codex_model", ""),
-                send_message=self._send_chat_message,
+                send_chat_message=self._send_chat_message,
+                send_webhook_message=self._send_webhook_message,
                 log=self._log,
             )
             if news_config_value

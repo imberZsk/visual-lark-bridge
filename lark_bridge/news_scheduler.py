@@ -55,10 +55,11 @@ class NewsScheduler:
         workspace: Path,
         provider: str,
         codex_model: str,
-        send_message: Callable[[str, str], bool],
+        send_chat_message: Callable[[str, str], bool],
         log: Callable[[str], None],
+        send_webhook_message: Callable[[str, str], bool] | None = None,
     ) -> None:
-        """初始化调度器；send_message 接收 chat_id 和 Markdown 正文。"""
+        """初始化调度器；两个发送函数分别处理会话和 Webhook 通知。"""
         # config_path 存储桌面端统一配置文件路径。
         self.config_path = config_path
         # state_path 存储新闻推送状态文件路径。
@@ -69,8 +70,12 @@ class NewsScheduler:
         self.provider = provider
         # codex_model 存储可选的 Codex 模型名。
         self.codex_model = codex_model
-        # send_message 存储主动消息发送边界函数。
-        self.send_message = send_message
+        # send_chat_message 存储飞书会话主动消息发送边界函数。
+        self.send_chat_message = send_chat_message
+        # send_webhook_message 存储飞书自定义机器人发送边界函数。
+        self.send_webhook_message = send_webhook_message or (
+            lambda _webhook_url, _markdown: False
+        )
         # log 存储桥接日志边界函数。
         self.log = log
         # stop_event 用于中断等待并及时结束线程。
@@ -165,7 +170,15 @@ class NewsScheduler:
         except Exception as exc:
             self.log(f"新闻摘要失败 schedule={schedule_key}: {exc}")
             return False
-        if not self.send_message(config.chat_id, format_digest_markdown(summary)):
+        # markdown 存储两种通知方式共用的最终新闻正文。
+        markdown = format_digest_markdown(summary)
+        # sent 标记所选通知方式是否成功接收消息。
+        sent = (
+            self.send_webhook_message(config.webhook_url, markdown)
+            if config.delivery_type == "webhook"
+            else self.send_chat_message(config.chat_id, markdown)
+        )
+        if not sent:
             self.log(f"新闻主动推送失败 schedule={schedule_key}")
             return False
         self._save_state(seen_links + [entry.link for entry in selected], schedule_key)

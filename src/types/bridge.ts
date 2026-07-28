@@ -20,7 +20,9 @@ export interface NewsSourceConfig {
 /** NewsConfig 描述 AI 新闻主动推送配置。 */
 export interface NewsConfig {
   enabled: boolean;
+  delivery_type: "chat" | "webhook";
   chat_id: string;
+  webhook_url: string;
   times: string[];
   sources: NewsSourceConfig[];
   max_items: number;

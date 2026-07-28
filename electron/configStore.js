@@ -28,7 +28,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   theme: "dark",
   news: {
     enabled: false,
+    delivery_type: "chat",
     chat_id: "",
+    webhook_url: "",
     times: ["09:07"],
     sources: DEFAULT_NEWS_SOURCES,
     max_items: 8,
@@ -169,10 +171,19 @@ export class ConfigStore {
       theme: source.theme === "light" ? "light" : "dark",
       news: {
         enabled: newsSource.enabled === true,
+        delivery_type:
+          newsSource.delivery_type === "webhook" ? "webhook" : "chat",
         chat_id:
           typeof newsSource.chat_id === "string" &&
           newsSource.chat_id.trim().startsWith("oc_")
             ? newsSource.chat_id.trim()
+            : "",
+        webhook_url:
+          typeof newsSource.webhook_url === "string" &&
+          /^https:\/\/open\.feishu\.cn\/open-apis\/bot\/v2\/hook\/[A-Za-z0-9-]+$/i.test(
+            newsSource.webhook_url.trim(),
+          )
+            ? newsSource.webhook_url.trim()
             : "",
         times: newsTimes,
         sources: newsSources,

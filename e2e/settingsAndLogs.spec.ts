@@ -73,10 +73,34 @@ e2eTest("配置 AI 新闻定时推送并保存", {}, async (page) => {
   expect(saveCall?.value).toMatchObject({
     news: {
       enabled: true,
+      delivery_type: "chat",
       chat_id: "oc_news_target",
+      webhook_url: "",
       times: ["09:07"],
       sources: [{ name: "Hacker News", url: "https://example.com/ai.xml" }],
       max_items: 12,
+    },
+  });
+});
+
+e2eTest("可选择 Webhook 作为新闻通知方式", {}, async (page) => {
+  await page.getByText("设置", { exact: true }).click();
+  await page.locator(".news-enabled-toggle").getByRole("switch").click();
+  await page.getByText("Webhook", { exact: true }).click();
+  await page
+    .getByLabel("飞书 Webhook URL")
+    .fill("https://open.feishu.cn/open-apis/bot/v2/hook/test-webhook-id");
+  await page.getByRole("button", { name: /保存设置/ }).click();
+  await expect(page.getByText("设置已保存")).toBeVisible();
+  const saveCall = (await readCalls(page))
+    .filter((call) => call.name === "saveConfig")
+    .at(-1);
+  expect(saveCall?.value).toMatchObject({
+    news: {
+      enabled: true,
+      delivery_type: "webhook",
+      webhook_url:
+        "https://open.feishu.cn/open-apis/bot/v2/hook/test-webhook-id",
     },
   });
 });

@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
+import urllib.error
+import urllib.request
 from typing import Optional
 
 
@@ -24,6 +27,37 @@ from datetime import datetime
 
 
 class BridgeTransportMixin:
+    def _send_webhook_message(self, webhook_url: str, markdown: str) -> bool:
+        """向飞书自定义机器人 Webhook 发送新闻文本，不在日志中暴露凭据地址。"""
+        if self.args.dry_run:
+            self._log("[dry-run] 将通过飞书 Webhook 推送新闻")
+            return True
+        # payload 存储飞书自定义机器人文本消息请求体。
+        payload = json.dumps(
+            {"msg_type": "text", "content": {"text": markdown}},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        # request 存储仅发往已由配置边界校验的飞书 Webhook 请求。
+        request = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        try:
+            # response 存储飞书机器人返回的 JSON 结果。
+            with urllib.request.urlopen(request, timeout=15) as result:
+                response = json.loads(result.read().decode("utf-8"))
+        except (OSError, urllib.error.URLError, json.JSONDecodeError):
+            # HTTPError 的字符串可能包含完整请求 URL；固定日志避免失败时泄露机器人凭据。
+            self._log("新闻 Webhook 推送失败：网络请求或响应解析异常")
+            return False
+        # success 兼容飞书自定义机器人新旧两种成功响应字段。
+        success = response.get("code") == 0 or response.get("StatusCode") == 0
+        if not success:
+            self._log("新闻 Webhook 推送失败：飞书返回非成功状态")
+        return success
+
     def _send_chat_message(self, chat_id: str, markdown: str) -> bool:
         """向指定会话主动发送 Markdown；chat_id 不依赖任何源消息。"""
         if self.args.dry_run:

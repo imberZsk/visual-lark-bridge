@@ -5,8 +5,10 @@ from __future__ import annotations
 import json
 import tempfile
 import unittest
+import urllib.error
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from visual_lark_bridge import NewsEntry
@@ -18,6 +20,7 @@ from visual_lark_bridge import due_schedule_key
 from visual_lark_bridge import load_news_config
 from visual_lark_bridge import parse_feed
 from visual_lark_bridge import select_unseen_entries
+from lark_bridge.bridge_transport import BridgeTransportMixin
 
 
 class NewsConfigTest(unittest.TestCase):
@@ -33,7 +36,9 @@ class NewsConfigTest(unittest.TestCase):
                     {
                         "news": {
                             "enabled": True,
+                            "delivery_type": "webhook",
                             "chat_id": "invalid",
+                            "webhook_url": "https://example.com/not-feishu",
                             "times": ["09:07", "25:00", "09:07"],
                             "sources": [
                                 {"name": "valid", "url": "https://example.com/rss"},
@@ -48,10 +53,38 @@ class NewsConfigTest(unittest.TestCase):
             # config 存储经过校验的新闻配置。
             config = load_news_config(config_path)
         self.assertEqual(config.chat_id, "")
+        self.assertEqual(config.delivery_type, "webhook")
+        self.assertEqual(config.webhook_url, "")
         self.assertEqual(config.times, ("09:07",))
         self.assertEqual(len(config.sources), 1)
         self.assertEqual(config.max_items, 20)
         self.assertFalse(config.runnable)
+
+    def test_valid_webhook_target_is_runnable_without_chat_id(self) -> None:
+        """选择 Webhook 时只要求合法机器人地址，不应继续依赖会话 Chat ID。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # config_path 存储 Webhook 配置测试文件。
+            config_path = Path(temp_dir) / "config.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "news": {
+                            "enabled": True,
+                            "delivery_type": "webhook",
+                            "webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/test-id",
+                            "times": ["09:07"],
+                            "sources": [
+                                {"name": "A", "url": "https://example.com/rss"}
+                            ],
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            config = load_news_config(config_path)
+
+        self.assertTrue(config.runnable)
+        self.assertEqual(config.chat_id, "")
 
     def test_missing_or_broken_file_disables_news(self) -> None:
         """配置文件缺失或损坏时不得启动推送。"""
@@ -61,6 +94,61 @@ class NewsConfigTest(unittest.TestCase):
             self.assertFalse(load_news_config(config_path).enabled)
             config_path.write_text("{broken", encoding="utf-8")
             self.assertFalse(load_news_config(config_path).enabled)
+
+
+class NewsWebhookTransportTest(unittest.TestCase):
+    """验证飞书自定义机器人请求体与成功响应兼容逻辑。"""
+
+    @mock.patch("lark_bridge.bridge_transport.urllib.request.urlopen")
+    def test_network_failure_does_not_log_webhook_url(self, urlopen: mock.Mock) -> None:
+        """HTTP 异常即使携带请求地址，桥接日志也不得输出 Webhook 凭据。"""
+        # webhook_url 存储测试用且会出现在 HTTPError 文本中的机器人地址。
+        webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/private-test-id"
+        urlopen.side_effect = urllib.error.HTTPError(
+            webhook_url, 500, "failed", {}, None
+        )
+        # log 存储失败链路产生的安全日志。
+        log = mock.Mock()
+        # transport 存储调用 mixin 方法所需的最小应用边界。
+        transport = SimpleNamespace(args=SimpleNamespace(dry_run=False), _log=log)
+
+        sent = BridgeTransportMixin._send_webhook_message(
+            transport, webhook_url, "新闻摘要"
+        )
+
+        self.assertFalse(sent)
+        self.assertNotIn(
+            webhook_url, " ".join(str(call) for call in log.call_args_list)
+        )
+
+    @mock.patch("lark_bridge.bridge_transport.urllib.request.urlopen")
+    def test_sends_text_payload_without_logging_webhook_url(
+        self, urlopen: mock.Mock
+    ) -> None:
+        """Webhook 通知应发送 UTF-8 文本请求，日志不得泄露完整凭据地址。"""
+        # response 存储模拟的飞书 Webhook 成功响应上下文。
+        response = mock.MagicMock()
+        response.read.return_value = b'{"StatusCode":0,"StatusMessage":"success"}'
+        urlopen.return_value.__enter__.return_value = response
+        # log 存储传输层产生的日志内容。
+        log = mock.Mock()
+        # transport 存储调用 mixin 方法所需的最小应用边界。
+        transport = SimpleNamespace(args=SimpleNamespace(dry_run=False), _log=log)
+        # webhook_url 存储测试用飞书机器人地址。
+        webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/test-webhook-id"
+
+        sent = BridgeTransportMixin._send_webhook_message(
+            transport, webhook_url, "新闻摘要"
+        )
+
+        self.assertTrue(sent)
+        # request 存储实际交给 urllib 的请求对象。
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, webhook_url)
+        self.assertIn("新闻摘要", request.data.decode("utf-8"))
+        self.assertNotIn(
+            webhook_url, " ".join(str(call) for call in log.call_args_list)
+        )
 
 
 class NewsSourceTest(unittest.TestCase):
@@ -205,6 +293,59 @@ class NewsSchedulerTest(unittest.TestCase):
         send_message.assert_called_once()
         summarize_news.assert_called_once()
         self.assertEqual(state["seen_links"], ["https://e/new"])
+
+    @mock.patch(
+        "lark_bridge.news_scheduler.summarize_news", return_value="Webhook 摘要"
+    )
+    @mock.patch("lark_bridge.news_scheduler.fetch_all_sources")
+    def test_webhook_delivery_uses_selected_channel(
+        self, fetch_all_sources: mock.Mock, summarize_news: mock.Mock
+    ) -> None:
+        """选择 Webhook 后调度器只能调用 Webhook 发送边界，不得误发到会话。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # root 存储 Webhook 调度测试的配置和状态目录。
+            root = Path(temp_dir)
+            # webhook_url 存储测试用合法飞书机器人地址。
+            webhook_url = "https://open.feishu.cn/open-apis/bot/v2/hook/test-webhook-id"
+            (root / "config.json").write_text(
+                json.dumps(
+                    {
+                        "news": {
+                            "enabled": True,
+                            "delivery_type": "webhook",
+                            "webhook_url": webhook_url,
+                            "times": ["09:07"],
+                            "sources": [
+                                {"name": "A", "url": "https://example.com/rss"}
+                            ],
+                            "max_items": 5,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            fetch_all_sources.return_value = [
+                NewsEntry("new", "https://e/new", "", "A")
+            ]
+            # send_chat 和 send_webhook 分别记录两种通知边界的调用。
+            send_chat = mock.Mock(return_value=True)
+            send_webhook = mock.Mock(return_value=True)
+            # scheduler 存储选择 Webhook 的待执行调度器。
+            scheduler = NewsScheduler(
+                root / "config.json",
+                root,
+                root,
+                "claude",
+                "",
+                send_chat,
+                mock.Mock(),
+                send_webhook,
+            )
+            self.assertTrue(scheduler.run_once(datetime(2026, 7, 28, 9, 7)))
+
+        send_chat.assert_not_called()
+        send_webhook.assert_called_once()
+        self.assertEqual(send_webhook.call_args.args[0], webhook_url)
 
     @mock.patch(
         "lark_bridge.news_scheduler.summarize_news",
