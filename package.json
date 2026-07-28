@@ -1,7 +1,7 @@
 {
   "name": "visual-lark-bridge",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "可视化管理飞书与本地 Claude Code 桥接服务的 Electron 桌面应用",
   "productName": "Visual Lark Bridge",
   "author": "imber",

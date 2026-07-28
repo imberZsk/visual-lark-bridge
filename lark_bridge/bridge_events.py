@@ -39,6 +39,9 @@ class BridgeEventMixin:
         ensure_lark_profile_exists(self.args.lark_profile)
         self._log("启动飞书事件监听")
         self.consumer.start()
+        if self.news_scheduler is not None:
+            self.news_scheduler.start()
+            self._log("AI 新闻调度已启动")
         self._log("消息与卡片按钮监听已就绪")
         self._log("桥接已就绪，等待飞书消息")
 
@@ -60,6 +63,8 @@ class BridgeEventMixin:
                         worker_thread.join()
                     break
         finally:
+            if self.news_scheduler is not None:
+                self.news_scheduler.stop()
             self.consumer.stop()
             self.task_manager.stop_all()
 

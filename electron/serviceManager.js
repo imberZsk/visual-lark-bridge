@@ -113,6 +113,8 @@ export class ServiceManager extends EventEmitter {
       expandHomePath(config.larkConfigPath, this.options.homePath),
       "--event-gateway",
       launchTarget.gatewayPath,
+      "--news-config",
+      path.join(this.options.userDataPath, "config.json"),
       "--claude-timeout",
       String(config.claudeTimeout),
       "--provider",

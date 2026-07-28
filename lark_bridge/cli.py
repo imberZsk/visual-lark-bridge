@@ -69,6 +69,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         help="飞书官方 SDK 单长连接网关脚本",
     )
     parser.add_argument(
+        "--news-config",
+        default="",
+        help="包含 news 字段的桌面端统一配置文件",
+    )
+    parser.add_argument(
         "--lark-identity",
         default="bot",
         choices=["bot", "user"],

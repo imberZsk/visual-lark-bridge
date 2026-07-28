@@ -18,6 +18,7 @@ from .consumers import LarkGatewayConsumer
 from .task_manager import ClaudeTaskManager
 from .claude_stream_session import ClaudeStreamSession
 from .codex_session import CodexSession
+from .news_scheduler import NewsScheduler
 import argparse
 
 
@@ -69,3 +70,18 @@ class BridgeApp(
         self.task_history_pages: dict[str, int] = {}
         # recent_card_submissions 存储任务最近一次提交的内容与时间，用于合并 Enter 和按钮重复回调。
         self.recent_card_submissions: dict[str, tuple[str, float]] = {}
+        # news_scheduler 存储可选的 AI 新闻后台调度器；未传配置路径时保持禁用。
+        news_config_value = getattr(args, "news_config", "")
+        self.news_scheduler = (
+            NewsScheduler(
+                config_path=Path(news_config_value).expanduser().resolve(),
+                state_dir=self.log_dir,
+                workspace=self.task_manager.workspace_root,
+                provider=getattr(args, "provider", "claude"),
+                codex_model=getattr(args, "codex_model", ""),
+                send_message=self._send_chat_message,
+                log=self._log,
+            )
+            if news_config_value
+            else None
+        )

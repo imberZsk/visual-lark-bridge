@@ -53,4 +53,33 @@ describe("ConfigStore", () => {
     expect(persisted.theme).toBe("light");
     expect(persisted.profile).toBe("concurrent-bot");
   });
+
+  it("validates news scheduling fields and removes invalid sources", async () => {
+    /** temporaryDirectory 存储新闻配置测试的隔离目录。 */
+    const temporaryDirectory = await mkdtemp(
+      path.join(os.tmpdir(), "lark-bridge-config-"),
+    );
+    /** store 存储待测试的配置仓库。 */
+    const store = new ConfigStore(temporaryDirectory);
+    /** saved 存储经过新闻字段校验的配置。 */
+    const saved = await store.write({
+      news: {
+        enabled: true,
+        chat_id: "invalid",
+        times: ["09:07", "25:00", "09:07"],
+        sources: [
+          { name: "Valid", url: "https://example.com/rss" },
+          { name: "Invalid", url: "file:///tmp/rss" },
+        ],
+        max_items: 99,
+      },
+    });
+    expect(saved.news).toEqual({
+      enabled: true,
+      chat_id: "",
+      times: ["09:07"],
+      sources: [{ name: "Valid", url: "https://example.com/rss" }],
+      max_items: 20,
+    });
+  });
 });

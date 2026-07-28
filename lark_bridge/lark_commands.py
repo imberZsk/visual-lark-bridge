@@ -104,6 +104,21 @@ def build_lark_reply_args(
     return prepend_lark_profile(args, profile)
 
 
+def build_lark_send_chat_message_args(
+    chat_id: str,
+    markdown: str,
+    identity: str = "bot",
+    profile: Optional[str] = None,
+) -> list[str]:
+    """构造向指定飞书会话主动发送 Markdown 的命令参数。"""
+    # args 存储不含 profile 覆盖的主动发送命令。
+    args = [
+        "lark-cli", "im", "+messages-send", "--chat-id", chat_id,
+        "--markdown", markdown, "--as", identity,
+    ]
+    return prepend_lark_profile(args, profile)
+
+
 def build_lark_update_message_args(
     message_id: str,
     text: str,

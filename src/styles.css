@@ -258,6 +258,28 @@ input {
   font-size: 12px;
 }
 
+.news-enabled-toggle {
+  margin-bottom: 12px;
+}
+
+.news-config-grid {
+  margin-top: 4px;
+}
+
+.news-sources {
+  margin-bottom: 16px;
+}
+
+.news-source-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.35fr) minmax(280px, 1fr) 32px;
+  width: 100%;
+}
+
+.news-source-row .ant-form-item {
+  margin-bottom: 8px;
+}
+
 .diagnostics-list {
   margin-bottom: 10px;
 }

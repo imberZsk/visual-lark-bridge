@@ -43,6 +43,34 @@ e2eTest("超时字段遵守范围并保存持久化", {}, async (page) => {
   expect(saveCall?.value).toMatchObject({ claudeTimeout: 600 });
 });
 
+e2eTest("配置 AI 新闻定时推送并保存", {}, async (page) => {
+  await page.getByText("设置", { exact: true }).click();
+  await page.locator(".news-enabled-toggle").getByRole("switch").click();
+  await page
+    .getByRole("textbox", { name: "目标会话 Chat ID" })
+    .fill("oc_news_target");
+  await page.getByRole("spinbutton", { name: "单次新闻条数" }).fill("12");
+  await page
+    .getByPlaceholder("https://example.com/rss.xml")
+    .fill("https://example.com/ai.xml");
+  await page.getByRole("button", { name: /保存设置/ }).click();
+  await expect(page.getByText("设置已保存")).toBeVisible();
+  const saveCall = (await readCalls(page))
+    .filter((call) => call.name === "saveConfig")
+    .at(-1);
+  expect(saveCall?.value).toMatchObject({
+    news: {
+      enabled: true,
+      chat_id: "oc_news_target",
+      times: ["09:07"],
+      sources: [
+        { name: "Hacker News", url: "https://example.com/ai.xml" },
+      ],
+      max_items: 12,
+    },
+  });
+});
+
 e2eTest("无日志时展示空状态且禁用清空", {}, async (page) => {
   await page.getByText("日志", { exact: true }).click();
   await expect(page.getByText("暂无日志", { exact: true })).toBeVisible();

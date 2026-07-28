@@ -1,6 +1,21 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+/** DEFAULT_NEWS_SOURCES 存储首次配置新闻推送时展示的默认 RSS 来源。 */
+const DEFAULT_NEWS_SOURCES = Object.freeze([
+  { name: "Hacker News", url: "https://hnrss.org/frontpage" },
+  { name: "arXiv cs.AI", url: "https://export.arxiv.org/rss/cs.AI" },
+  { name: "OpenAI", url: "https://openai.com/news/rss.xml" },
+  {
+    name: "Google AI",
+    url: "https://blog.google/innovation-and-ai/technology/ai/rss/",
+  },
+]);
+/** NEWS_TIME_PATTERN 存储每日推送时刻允许的 24 小时格式。 */
+const NEWS_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+/** NEWS_MAX_ITEMS_LIMIT 存储单次推送条数的配置上限。 */
+const NEWS_MAX_ITEMS_LIMIT = 20;
+
 /** DEFAULT_CONFIG 存储首次启动时使用的非敏感桥接配置。 */
 export const DEFAULT_CONFIG = Object.freeze({
   profile: "visual-lark-bridge",
@@ -11,6 +26,13 @@ export const DEFAULT_CONFIG = Object.freeze({
   claudeTimeout: 180,
   autoStartBridge: true,
   theme: "dark",
+  news: {
+    enabled: false,
+    chat_id: "",
+    times: ["09:07"],
+    sources: DEFAULT_NEWS_SOURCES,
+    max_items: 8,
+  },
 });
 
 /** ConfigStore 负责校验并原子持久化桌面端配置。 */
@@ -83,6 +105,43 @@ export class ConfigStore {
     const source = input && typeof input === "object" ? input : {};
     /** timeoutValue 存储用户提交的超时秒数。 */
     const timeoutValue = Number(source.claudeTimeout);
+    /** newsSource 存储可安全读取的新闻配置对象。 */
+    const newsSource =
+      source.news && typeof source.news === "object" ? source.news : {};
+    /** newsTimes 存储去重后的有效每日推送时刻。 */
+    const newsTimes = Array.isArray(newsSource.times)
+      ? [
+          ...new Set(
+            newsSource.times
+              .filter((value) => typeof value === "string")
+              .map((value) => value.trim())
+              .filter((value) => NEWS_TIME_PATTERN.test(value)),
+          ),
+        ].sort()
+      : DEFAULT_CONFIG.news.times;
+    /** newsSources 存储名称和 HTTP(S) URL 均有效的信息源。 */
+    const newsSources = Array.isArray(newsSource.sources)
+      ? newsSource.sources
+          .filter(
+            (item) =>
+              item &&
+              typeof item === "object" &&
+              typeof item.url === "string" &&
+              /^https?:\/\/[^\s]+$/i.test(item.url.trim()),
+          )
+          .map((item, index) => ({
+            name:
+              typeof item.name === "string" && item.name.trim()
+                ? item.name.trim()
+                : `信息源 ${index + 1}`,
+            url: item.url.trim(),
+          }))
+      : DEFAULT_CONFIG.news.sources.map((item) => ({ ...item }));
+    /** newsMaxItems 存储收敛到允许区间内的新闻条数。 */
+    const newsMaxItemsValue = Number(newsSource.max_items);
+    const newsMaxItems = Number.isInteger(newsMaxItemsValue)
+      ? Math.min(Math.max(newsMaxItemsValue, 1), NEWS_MAX_ITEMS_LIMIT)
+      : DEFAULT_CONFIG.news.max_items;
     return {
       profile:
         typeof source.profile === "string" && source.profile.trim()
@@ -108,6 +167,17 @@ export class ConfigStore {
           : DEFAULT_CONFIG.claudeTimeout,
       autoStartBridge: source.autoStartBridge !== false,
       theme: source.theme === "light" ? "light" : "dark",
+      news: {
+        enabled: newsSource.enabled === true,
+        chat_id:
+          typeof newsSource.chat_id === "string" &&
+          newsSource.chat_id.trim().startsWith("oc_")
+            ? newsSource.chat_id.trim()
+            : "",
+        times: newsTimes,
+        sources: newsSources,
+        max_items: newsMaxItems,
+      },
     };
   }
 }
