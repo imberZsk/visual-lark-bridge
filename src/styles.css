@@ -266,6 +266,21 @@ input {
   margin-top: 4px;
 }
 
+.news-times {
+  display: grid;
+  gap: 8px;
+}
+
+.news-time-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 32px;
+  width: 100%;
+}
+
+.news-time-row .ant-picker {
+  width: 100%;
+}
+
 .news-sources {
   margin-bottom: 16px;
 }

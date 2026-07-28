@@ -45,6 +45,7 @@ e2eTest("超时字段遵守范围并保存持久化", {}, async (page) => {
 
 e2eTest("配置 AI 新闻定时推送并保存", {}, async (page) => {
   await page.getByText("设置", { exact: true }).click();
+  await expect(page.locator(".ant-picker")).toBeVisible();
   await page.locator(".news-enabled-toggle").getByRole("switch").click();
   await page
     .getByRole("textbox", { name: "目标会话 Chat ID" })
@@ -63,9 +64,7 @@ e2eTest("配置 AI 新闻定时推送并保存", {}, async (page) => {
       enabled: true,
       chat_id: "oc_news_target",
       times: ["09:07"],
-      sources: [
-        { name: "Hacker News", url: "https://example.com/ai.xml" },
-      ],
+      sources: [{ name: "Hacker News", url: "https://example.com/ai.xml" }],
       max_items: 12,
     },
   });

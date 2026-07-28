@@ -7,8 +7,11 @@ import {
   Select,
   Space,
   Switch,
+  TimePicker,
 } from "antd";
 import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+import type { Dayjs } from "dayjs";
 import type { BridgeConfig } from "../types/bridge";
 
 /** SettingsPanelProps 描述设置表单输入。 */
@@ -89,21 +92,43 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
           >
             <Input placeholder="oc_xxx" />
           </Form.Item>
-          <Form.Item
-            name={["news", "times"]}
-            label="每日推送时刻"
-            rules={[
-              {
-                validator: (_, values: string[] | undefined) =>
-                  !values?.some(
-                    (value) => !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value),
-                  )
-                    ? Promise.resolve()
-                    : Promise.reject(new Error("时刻格式必须为 HH:MM")),
-              },
-            ]}
-          >
-            <Select mode="tags" tokenSeparators={[","]} placeholder="09:07" />
+          <Form.Item label="每日推送时刻">
+            <Form.List name={["news", "times"]}>
+              {(fields, { add, remove }) => (
+                <div className="news-times">
+                  {fields.map(({ key, name, ...restField }) => (
+                    <Space key={key} className="news-time-row" align="start">
+                      <Form.Item
+                        {...restField}
+                        name={name}
+                        getValueProps={(time: string | undefined) => ({
+                          value: time ? dayjs(`2000-01-01T${time}:00`) : null,
+                        })}
+                        normalize={(time: Dayjs | null) =>
+                          time?.format("HH:mm") ?? ""
+                        }
+                        rules={[{ required: true, message: "请选择推送时刻" }]}
+                        noStyle
+                      >
+                        <TimePicker
+                          format="HH:mm"
+                          minuteStep={5}
+                          placeholder="选择推送时刻"
+                        />
+                      </Form.Item>
+                      <Button
+                        aria-label="删除推送时刻"
+                        icon={<DeleteOutlined />}
+                        onClick={() => remove(name)}
+                      />
+                    </Space>
+                  ))}
+                  <Button icon={<PlusOutlined />} onClick={() => add("09:00")}>
+                    添加时刻
+                  </Button>
+                </div>
+              )}
+            </Form.List>
           </Form.Item>
           <Form.Item
             name={["news", "max_items"]}
