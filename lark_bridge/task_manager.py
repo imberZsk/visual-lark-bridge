@@ -107,7 +107,7 @@ class ClaudeTaskManager:
                     last_error=item.get("last_error", ""),
                     created_at=item.get("created_at", ""),
                     updated_at=item.get("updated_at", ""),
-                    lock=threading.Lock(),
+                    lock=threading.RLock(),
                 )
                 self.tasks[task_id] = task
 
@@ -283,7 +283,7 @@ class ClaudeTaskManager:
             workspace=workspace,
             created_at=now,
             updated_at=now,
-            lock=threading.Lock(),
+            lock=threading.RLock(),
         )
         self.tasks[task_id] = task
         self.sender_current_tasks[sender_id] = task_id
@@ -419,7 +419,7 @@ class ClaudeTaskManager:
         # task 存储目标任务状态。
         task = self.tasks[task_id]
         if task.lock is None:
-            task.lock = threading.Lock()
+            task.lock = threading.RLock()
 
         with task.lock:
             if task.session is None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable
 
@@ -20,13 +20,29 @@ from .news_summarizer import summarize_news
 
 # NEWS_STATE_FILE 存储新闻去重和末次调度状态文件名。
 NEWS_STATE_FILE = "news-state.json"
+# NEWS_CATCH_UP_WINDOW 存储服务离线或电脑休眠后允许补发的最长时间。
+NEWS_CATCH_UP_WINDOW = timedelta(hours=6)
 
 
 def due_schedule_key(now: datetime, times: tuple[str, ...], last_run: str) -> str:
-    """返回当前分钟应触发的唯一键；非配置时刻或已触发时返回空字符串。"""
-    # schedule_key 存储日期与分钟组合，避免同一分钟内重复执行。
-    schedule_key = f"{now.date().isoformat()} {now.strftime('%H:%M')}"
-    return schedule_key if now.strftime("%H:%M") in times and schedule_key != last_run else ""
+    """返回最近一个应执行且未完成的时刻，支持在有限窗口内补发。"""
+    # candidates 存储今天和昨天所有不晚于当前时间的配置时刻。
+    candidates: list[datetime] = []
+    for day_offset in (0, 1):
+        # candidate_date 存储本轮检查的本地日期。
+        candidate_date = now.date() - timedelta(days=day_offset)
+        for configured_time in times:
+            # candidate 存储配置时刻与本地日期组合后的具体时间。
+            candidate = datetime.strptime(
+                f"{candidate_date.isoformat()} {configured_time}", "%Y-%m-%d %H:%M"
+            ).replace(tzinfo=now.tzinfo)
+            if candidate <= now and now - candidate <= NEWS_CATCH_UP_WINDOW:
+                candidates.append(candidate)
+    if not candidates:
+        return ""
+    # schedule_key 存储最近一个可补发时刻的唯一键。
+    schedule_key = max(candidates).strftime("%Y-%m-%d %H:%M")
+    return schedule_key if schedule_key != last_run else ""
 
 
 class NewsScheduler:
@@ -67,7 +83,9 @@ class NewsScheduler:
         if self.thread is not None and self.thread.is_alive():
             return
         self.stop_event.clear()
-        self.thread = threading.Thread(target=self._run, name="news-scheduler", daemon=True)
+        self.thread = threading.Thread(
+            target=self._run, name="news-scheduler", daemon=True
+        )
         self.thread.start()
 
     def stop(self) -> None:
@@ -88,7 +106,11 @@ class NewsScheduler:
             return [], ""
         # links 存储类型有效的历史推送链接。
         raw_links = payload.get("seen_links")
-        links = [value for value in raw_links if isinstance(value, str)] if isinstance(raw_links, list) else []
+        links = (
+            [value for value in raw_links if isinstance(value, str)]
+            if isinstance(raw_links, list)
+            else []
+        )
         # last_run 存储最后一次已处理的日期时刻键。
         raw_last_run = payload.get("last_run")
         last_run = raw_last_run if isinstance(raw_last_run, str) else ""
@@ -98,10 +120,15 @@ class NewsScheduler:
         """原子保存裁剪后的推送链接和末次调度键。"""
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         # payload 存储有界去重状态，避免文件无限增长。
-        payload = {"seen_links": seen_links[-NEWS_STATE_LINK_LIMIT:], "last_run": last_run}
+        payload = {
+            "seen_links": seen_links[-NEWS_STATE_LINK_LIMIT:],
+            "last_run": last_run,
+        }
         # temporary_path 存储原子替换前的临时文件。
         temporary_path = self.state_path.with_suffix(".tmp")
-        temporary_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        temporary_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
         temporary_path.replace(self.state_path)
 
     def run_once(self, now: datetime | None = None) -> bool:
@@ -118,13 +145,13 @@ class NewsScheduler:
         schedule_key = due_schedule_key(current_time, config.times, last_run)
         if not schedule_key:
             return False
-        # 到点即记为已处理，休眠唤醒或失败后不在同一分钟反复补推。
-        self._save_state(seen_links, schedule_key)
         # entries 存储所有可用来源按发布时间排序的新闻。
         entries = fetch_all_sources(config.sources, self.log)
         # selected 存储未推送且落在本次条数上限内的新闻。
         selected = select_unseen_entries(entries, set(seen_links), config.max_items)
         if not selected:
+            # 没有新条目也属于本时刻已正常处理，避免轮询时重复抓取全部来源。
+            self._save_state(seen_links, schedule_key)
             self.log(f"新闻调度无新条目 schedule={schedule_key}")
             return False
         try:

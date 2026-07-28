@@ -23,12 +23,31 @@ interface SettingsPanelProps {
 
 /** SettingsPanel 编辑桥接运行配置，不接触飞书 App Secret。 */
 export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
+  /** form 存储设置页表单实例，用于根据推送开关联动校验必填项。 */
+  const [form] = Form.useForm<BridgeConfig>();
+  /** newsEnabled 存储当前表单是否打开新闻定时推送。 */
+  const newsEnabled = Form.useWatch(["news", "enabled"], form);
+  /** handleSubmit 在保存前执行跨字段业务校验，避免启用状态与目标配置不一致。 */
+  const handleSubmit = (values: BridgeConfig) => {
+    if (values.news.enabled && !values.news.chat_id.trim()) {
+      // 动态 required 规则不会因 Switch 变化自动重跑，提交边界必须再次阻止半配置落盘。
+      form.setFields([
+        {
+          name: ["news", "chat_id"],
+          errors: ["启用推送后必须填写目标会话 Chat ID"],
+        },
+      ]);
+      return;
+    }
+    onSave(values);
+  };
   return (
     <section className="panel settings-panel">
       <Form<BridgeConfig>
+        form={form}
         layout="vertical"
         initialValues={config}
-        onFinish={onSave}
+        onFinish={handleSubmit}
         requiredMark={false}
       >
         <div className="form-grid">
@@ -85,6 +104,10 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
             label="目标会话 Chat ID"
             rules={[
               {
+                required: newsEnabled,
+                message: "启用推送后必须填写目标会话 Chat ID",
+              },
+              {
                 pattern: /^(?:oc_.+)?$/,
                 message: "Chat ID 必须以 oc_ 开头",
               },
@@ -93,8 +116,19 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
             <Input placeholder="oc_xxx" />
           </Form.Item>
           <Form.Item label="每日推送时刻">
-            <Form.List name={["news", "times"]}>
-              {(fields, { add, remove }) => (
+            <Form.List
+              name={["news", "times"]}
+              rules={[
+                {
+                  validator: async (_, times: string[] | undefined) => {
+                    if (newsEnabled && (!times || times.length === 0)) {
+                      throw new Error("启用推送后至少保留一个推送时刻");
+                    }
+                  },
+                },
+              ]}
+            >
+              {(fields, { add, remove }, { errors }) => (
                 <div className="news-times">
                   {fields.map(({ key, name, ...restField }) => (
                     <Space key={key} className="news-time-row" align="start">
@@ -126,6 +160,7 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
                   <Button icon={<PlusOutlined />} onClick={() => add("09:00")}>
                     添加时刻
                   </Button>
+                  <Form.ErrorList errors={errors} />
                 </div>
               )}
             </Form.List>
@@ -138,8 +173,19 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
             <InputNumber min={1} max={20} />
           </Form.Item>
         </div>
-        <Form.List name={["news", "sources"]}>
-          {(fields, { add, remove }) => (
+        <Form.List
+          name={["news", "sources"]}
+          rules={[
+            {
+              validator: async (_, sources: unknown[] | undefined) => {
+                if (newsEnabled && (!sources || sources.length === 0)) {
+                  throw new Error("启用推送后至少保留一个信息源");
+                }
+              },
+            },
+          ]}
+        >
+          {(fields, { add, remove }, { errors }) => (
             <div className="news-sources">
               {fields.map(({ key, name, ...restField }) => (
                 <Space key={key} className="news-source-row" align="start">
@@ -173,6 +219,7 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
               >
                 添加信息源
               </Button>
+              <Form.ErrorList errors={errors} />
             </div>
           )}
         </Form.List>

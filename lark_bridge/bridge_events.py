@@ -405,6 +405,9 @@ class BridgeEventMixin:
                 card_id, empty_input["element_id"], empty_input, sequence
             ):
                 sequence += 1
+                self._log(f"task_id={task.task_id} 输入框已清空")
+            else:
+                self._log(f"task_id={task.task_id} 输入框清空失败")
         # had_error 标记最终卡片是否需要使用错误样式和重试提示。
         had_error = False
         try:

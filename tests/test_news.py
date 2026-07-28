@@ -141,17 +141,18 @@ class NewsCommandTest(unittest.TestCase):
 class NewsSchedulerTest(unittest.TestCase):
     """验证调度幂等、状态恢复和成功推送链路。"""
 
-    def test_due_key_only_matches_configured_unprocessed_minute(self) -> None:
-        """同一分钟重复唤醒与跨天旧键不应混淆。"""
+    def test_due_key_matches_current_or_recent_missed_schedule(self) -> None:
+        """同一分钟不得重复执行，服务离线后应补发六小时内错过的最近时刻。"""
         # now 存储固定调度时间。
         now = datetime(2026, 7, 28, 9, 7)
         self.assertEqual(due_schedule_key(now, ("09:07",), ""), "2026-07-28 09:07")
         self.assertEqual(due_schedule_key(now, ("09:07",), "2026-07-28 09:07"), "")
         self.assertEqual(due_schedule_key(now, ("18:07",), ""), "")
         self.assertEqual(
-            due_schedule_key(datetime(2026, 7, 29, 9, 7), ("09:07",), "2026-07-28 09:07"),
-            "2026-07-29 09:07",
+            due_schedule_key(datetime(2026, 7, 29, 0, 10), ("23:50",), ""),
+            "2026-07-28 23:50",
         )
+        self.assertEqual(due_schedule_key(datetime(2026, 7, 29, 7), ("23:50",), ""), "")
 
     @mock.patch("lark_bridge.news_scheduler.summarize_news", return_value="摘要")
     @mock.patch("lark_bridge.news_scheduler.fetch_all_sources")
@@ -171,19 +172,29 @@ class NewsSchedulerTest(unittest.TestCase):
                             "enabled": True,
                             "chat_id": "oc_target",
                             "times": ["09:07"],
-                            "sources": [{"name": "A", "url": "https://example.com/rss"}],
+                            "sources": [
+                                {"name": "A", "url": "https://example.com/rss"}
+                            ],
                             "max_items": 5,
                         }
                     }
                 ),
                 encoding="utf-8",
             )
-            fetch_all_sources.return_value = [NewsEntry("new", "https://e/new", "", "A")]
+            fetch_all_sources.return_value = [
+                NewsEntry("new", "https://e/new", "", "A")
+            ]
             # send_message 记录主动推送调用。
             send_message = mock.Mock(return_value=True)
             # scheduler 存储待执行的新闻调度器。
             scheduler = NewsScheduler(
-                config_path, root, root / "workspace", "claude", "", send_message, mock.Mock()
+                config_path,
+                root,
+                root / "workspace",
+                "claude",
+                "",
+                send_message,
+                mock.Mock(),
             )
             # now 存储两次调用共用的同一分钟。
             now = datetime(2026, 7, 28, 9, 7)
@@ -194,6 +205,60 @@ class NewsSchedulerTest(unittest.TestCase):
         send_message.assert_called_once()
         summarize_news.assert_called_once()
         self.assertEqual(state["seen_links"], ["https://e/new"])
+
+    @mock.patch(
+        "lark_bridge.news_scheduler.summarize_news",
+        side_effect=[RuntimeError("temporary"), "重试成功"],
+    )
+    @mock.patch("lark_bridge.news_scheduler.fetch_all_sources")
+    def test_failed_summary_does_not_mark_schedule_complete(
+        self, fetch_all_sources: mock.Mock, summarize_news: mock.Mock
+    ) -> None:
+        """摘要临时失败后不得提前完成该时刻，下一轮检查应继续尝试并成功发送。"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # root 存储失败重试测试的配置和状态目录。
+            root = Path(temp_dir)
+            # config_path 存储可运行的新闻配置。
+            config_path = root / "config.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "news": {
+                            "enabled": True,
+                            "chat_id": "oc_target",
+                            "times": ["23:50"],
+                            "sources": [
+                                {"name": "A", "url": "https://example.com/rss"}
+                            ],
+                            "max_items": 5,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            fetch_all_sources.return_value = [
+                NewsEntry("new", "https://e/new", "", "A")
+            ]
+            # send_message 记录失败重试后真正发生的主动推送。
+            send_message = mock.Mock(return_value=True)
+            # scheduler 存储待验证失败恢复行为的调度器。
+            scheduler = NewsScheduler(
+                config_path,
+                root,
+                root / "workspace",
+                "claude",
+                "",
+                send_message,
+                mock.Mock(),
+            )
+            # now 存储错过 23:50 后仍处于补发窗口的当前时间。
+            now = datetime(2026, 7, 29, 0, 10)
+            self.assertFalse(scheduler.run_once(now))
+            self.assertFalse((root / "news-state.json").exists())
+            self.assertTrue(scheduler.run_once(now))
+
+        self.assertEqual(summarize_news.call_count, 2)
+        send_message.assert_called_once()
 
     def test_broken_state_is_treated_as_empty(self) -> None:
         """损坏状态文件不得让调度器崩溃。"""

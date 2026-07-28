@@ -301,12 +301,14 @@ input {
 
 .logs-toolbar {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .logs-toolbar .ant-input-search {
+  width: min(100%, 520px);
+  min-width: 0;
   max-width: 520px;
 }
 

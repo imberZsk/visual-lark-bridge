@@ -72,5 +72,5 @@ class ClaudeTask:
     created_at: str = ""
     # updated_at 存储任务最近更新时间戳。
     updated_at: str = ""
-    # lock 串行化同一个 Claude 任务的 TUI 输入和状态更新，避免多条消息交错。
-    lock: Optional[threading.Lock] = None
+    # lock 串行化同一任务的卡片生命周期、TUI 输入和状态更新；可重入以覆盖卡片外层队列。
+    lock: Optional[threading.RLock] = None

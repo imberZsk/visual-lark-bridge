@@ -2,6 +2,7 @@
 
 import json
 import tempfile
+import threading
 import unittest
 from unittest import mock
 from pathlib import Path
@@ -251,9 +252,7 @@ class CardInteractionTest(unittest.TestCase):
                         f"第{turn_index}轮正文帧缺少当前问题标记：{frame!r}",
                     )
                 # baseline_prefix 存储首帧中截至当前问题标记结束的稳定前缀。
-                baseline_prefix = frames[0][
-                    : frames[0].index(marker) + len(marker)
-                ]
+                baseline_prefix = frames[0][: frames[0].index(marker) + len(marker)]
                 for frame in frames:
                     self.assertTrue(
                         frame.startswith(baseline_prefix),
@@ -426,6 +425,81 @@ class CardInteractionTest(unittest.TestCase):
         submitted_message = streaming.call_args.args[0]
         self.assertEqual(submitted_message.text, "按回车发送")
         self.assertTrue(streaming.call_args.kwargs["clear_input"])
+
+    def test_card_chat_submissions_wait_for_previous_turn(self):
+        """同一任务连续提交时第二轮必须等待第一轮卡片与 Claude 处理全部结束。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            # args 存储并发卡片提交测试所需配置。
+            args = SimpleNamespace(
+                log_dir=str(Path(tmp) / "logs"),
+                workspace=str(Path(tmp) / "workspace"),
+                system_prompt="测试提示",
+                claude_timeout=5,
+                lark_identity="bot",
+                lark_profile=DEFAULT_LARK_PROFILE,
+                reply_identity="bot",
+                dry_run=True,
+                once=False,
+            )
+            # app 存储用于验证同任务提交队列的桥接应用。
+            app = BridgeApp(args)
+            app.task_manager.create_task("ou_user", "排队任务")
+            # task_id 存储两次提交共同绑定的任务 ID。
+            task_id = app.task_manager.current_task_id_for_sender("ou_user")
+            # first_started 和 release_first 控制第一轮流式处理的阻塞窗口。
+            first_started = threading.Event()
+            release_first = threading.Event()
+            # entered_questions 存储真正进入流式处理的顺序。
+            entered_questions: list[str] = []
+
+            def blocking_stream(message, **_kwargs):
+                """记录进入顺序，并让第一轮保持阻塞以观察第二轮是否越过任务锁。"""
+                entered_questions.append(message.text)
+                if message.text == "第一问":
+                    first_started.set()
+                    release_first.wait(timeout=2)
+                return True
+
+            # first_thread 和 second_thread 模拟网关为两次卡片回调创建的后台线程。
+            first_thread = threading.Thread(
+                target=app._handle_card_chat_submit,
+                args=(
+                    {
+                        "event_id": "evt_first",
+                        "input_value": "第一问",
+                        "message_id": "om_card",
+                        "chat_id": "oc_chat",
+                    },
+                    task_id,
+                    "ou_user",
+                ),
+            )
+            second_thread = threading.Thread(
+                target=app._handle_card_chat_submit,
+                args=(
+                    {
+                        "event_id": "evt_second",
+                        "input_value": "第二问",
+                        "message_id": "om_card",
+                        "chat_id": "oc_chat",
+                    },
+                    task_id,
+                    "ou_user",
+                ),
+            )
+            with mock.patch.object(
+                app, "_handle_event_streaming", side_effect=blocking_stream
+            ):
+                first_thread.start()
+                self.assertTrue(first_started.wait(timeout=1))
+                second_thread.start()
+                second_thread.join(timeout=0.1)
+                self.assertEqual(entered_questions, ["第一问"])
+                release_first.set()
+                first_thread.join(timeout=1)
+                second_thread.join(timeout=1)
+
+        self.assertEqual(entered_questions, ["第一问", "第二问"])
 
     def test_create_task_card_sends_new_independent_card(self):
         """新任务按钮应回复新卡片并保留独立的任务到卡片映射。"""

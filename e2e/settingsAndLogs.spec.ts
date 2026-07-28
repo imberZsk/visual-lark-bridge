@@ -81,6 +81,18 @@ e2eTest("配置 AI 新闻定时推送并保存", {}, async (page) => {
   });
 });
 
+e2eTest("启用新闻推送时阻止保存缺少目标的配置", {}, async (page) => {
+  await page.getByText("设置", { exact: true }).click();
+  await page.locator(".news-enabled-toggle").getByRole("switch").click();
+  await page.getByRole("button", { name: /保存设置/ }).click();
+  await expect(
+    page.getByText("启用推送后必须填写目标会话 Chat ID"),
+  ).toBeVisible();
+  expect(
+    (await readCalls(page)).filter((call) => call.name === "saveConfig"),
+  ).toHaveLength(0);
+});
+
 e2eTest("无日志时展示空状态且禁用清空", {}, async (page) => {
   await page.getByText("日志", { exact: true }).click();
   await expect(page.getByText("暂无日志", { exact: true })).toBeVisible();
@@ -92,6 +104,17 @@ e2eTest(
   { logs: "bridge started\nmessage received" },
   async (page) => {
     await page.getByText("日志", { exact: true }).click();
+    const searchBox = page.locator(".logs-toolbar .ant-input-search");
+    const panel = page.locator(".logs-panel");
+    const [searchBounds, panelBounds] = await Promise.all([
+      searchBox.boundingBox(),
+      panel.boundingBox(),
+    ]);
+    expect(searchBounds).not.toBeNull();
+    expect(panelBounds).not.toBeNull();
+    expect(searchBounds!.x + searchBounds!.width).toBeLessThanOrEqual(
+      panelBounds!.x + panelBounds!.width,
+    );
     await expect(page.getByText("bridge started")).toBeVisible();
     await page.getByRole("button", { name: /刷新/ }).click();
     await page.getByRole("button", { name: /清空/ }).click();
