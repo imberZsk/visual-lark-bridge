@@ -300,6 +300,7 @@ class BridgeEventMixin:
         )
         if task is None:
             return False
+        self._log(f"task_id={task.task_id} 开始处理 message_id={message.message_id}")
         self.task_history_pages[task.task_id] = 0
         if track_source_message:
             self.task_source_messages[task.task_id] = message.message_id
@@ -316,10 +317,18 @@ class BridgeEventMixin:
             if card_message_id is None:
                 self._log(f"发卡失败 card_id={card_id}，回退到文本占位路径")
                 return False
+            self._log(
+                f"task_id={task.task_id} 已创建任务卡 card_id={card_id} "
+                f"card_message_id={card_message_id}"
+            )
             # sequence 存储新卡片第一次内容更新应使用的序号。
             sequence = 1
         else:
             card_id, card_message_id, sequence = existing_card
+            self._log(
+                f"task_id={task.task_id} 复用任务卡 card_id={card_id} "
+                f"card_message_id={card_message_id}"
+            )
 
         # previous_history 存储进入本轮前的已完成对话，最终落盘后仍用此快照避免重复当前轮。
         previous_history = list(task.conversation_history)
@@ -418,5 +427,9 @@ class BridgeEventMixin:
         if had_error:
             self._log(
                 f"任务 {task.task_id} 已展示友好失败卡片 card_message_id={card_message_id}"
+            )
+        else:
+            self._log(
+                f"task_id={task.task_id} 处理完成 card_message_id={card_message_id}"
             )
         return True

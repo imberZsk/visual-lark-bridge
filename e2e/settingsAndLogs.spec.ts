@@ -9,7 +9,7 @@ const STRUCTURED_LOG_SAMPLE = [
     (_, index) =>
       `[2026-07-28T08:${String(index).padStart(2, "0")}] entry ${index}`,
   ),
-  '[2026-07-28T10:00:00] 收到原始飞书事件：{"event_id":"evt_json","chat_id":"oc_test"}',
+  '[2026-07-28T10:00:00] 收到卡片动作：{"event_id":"evt_json","task_id":"t1","chat_id":"oc_test"}',
 ].join("\n");
 
 e2eTest("设置页回显默认配置", {}, async (page) => {
@@ -108,11 +108,27 @@ e2eTest(
 
 e2eTest(
   "日志支持查询分页解析和复制 JSON",
-  { logs: STRUCTURED_LOG_SAMPLE },
+  {
+    logs: STRUCTURED_LOG_SAMPLE,
+    snapshot: {
+      tasks: [
+        {
+          task_id: "t1",
+          title: "新闻分析",
+          status: "idle",
+          turns: 1,
+          last_question: "整理新闻",
+          updated_at: "2026-07-28T10:00:00",
+        },
+      ],
+    },
+  },
   async (page) => {
     await page.getByText("日志", { exact: true }).click();
     await expect(page.getByText("显示最近 100 条，共 106 条")).toBeVisible();
     await expect(page.getByText("oldest entry")).not.toBeVisible();
+    await page.getByRole("tab", { name: "t1 · 新闻分析" }).click();
+    await expect(page.getByText("显示最近 1 条，共 1 条")).toBeVisible();
     await page.getByPlaceholder("查询日志内容或 JSON 字段").fill("evt_json");
     await expect(page.getByText("找到 1 条日志")).toBeVisible();
     await page.getByRole("button", { name: "解析 JSON" }).click();
@@ -120,6 +136,8 @@ e2eTest(
     await page.getByRole("button", { name: "复制 JSON" }).click();
     await expect(page.getByText("JSON 已复制")).toBeVisible();
     await page.getByPlaceholder("查询日志内容或 JSON 字段").clear();
+    await page.getByRole("tab", { name: "系统" }).click();
+    await expect(page.getByText("显示最近 100 条，共 105 条")).toBeVisible();
     await page.getByRole("button", { name: /显示更早日志/ }).click();
     await expect(page.getByText("oldest entry")).toBeVisible();
   },

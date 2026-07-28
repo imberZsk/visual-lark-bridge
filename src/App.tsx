@@ -86,6 +86,7 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
         {activeView === "logs" && (
           <LogsPage
             logs={controller.logs}
+            tasks={controller.snapshot.tasks}
             loading={controller.logsLoading}
             onRefresh={controller.refreshLogs}
             onClear={controller.clearLogs}

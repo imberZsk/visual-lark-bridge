@@ -310,6 +310,14 @@ input {
   max-width: 520px;
 }
 
+.logs-categories {
+  margin-bottom: 8px;
+}
+
+.logs-categories .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
 .logs-content {
   min-height: 340px;
 }

@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { App, Button, Empty, Input, Spin, Tooltip } from "antd";
+import { App, Button, Empty, Input, Spin, Tabs, Tooltip } from "antd";
 import {
   CodeOutlined,
   CopyOutlined,
   DeleteOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
+import type { BridgeTask } from "../types/bridge";
 
 /** DEFAULT_VISIBLE_LOG_LINES 存储首次打开日志页时展示的最近日志行数。 */
 const DEFAULT_VISIBLE_LOG_LINES = 100;
@@ -13,6 +14,12 @@ const DEFAULT_VISIBLE_LOG_LINES = 100;
 const LOG_LINES_PAGE_SIZE = 100;
 /** LOG_TIMESTAMP_PATTERN 存储桥接日志行开头的时间戳格式。 */
 const LOG_TIMESTAMP_PATTERN = /^\[([^\]]+)]\s*(.*)$/;
+/** LOG_TASK_PATTERN 存储桥接任务上下文支持的文本格式。 */
+const LOG_TASK_PATTERN = /(?:task_id=|任务\s+)(t\d+)\b/i;
+/** ALL_LOGS_CATEGORY 存储全部日志分类的稳定键。 */
+const ALL_LOGS_CATEGORY = "all";
+/** SYSTEM_LOGS_CATEGORY 存储不属于具体任务的系统日志分类键。 */
+const SYSTEM_LOGS_CATEGORY = "system";
 
 /** ParsedLogEntry 描述一行日志拆解后的显示内容和可选 JSON 数据。 */
 interface ParsedLogEntry {
@@ -20,11 +27,13 @@ interface ParsedLogEntry {
   timestamp: string;
   message: string;
   json: unknown | null;
+  taskId: string;
 }
 
 /** LogsPanelProps 描述日志面板输入。 */
 interface LogsPanelProps {
   logs: string;
+  tasks: BridgeTask[];
   loading: boolean;
   onRefresh(): void;
   onClear(): Promise<void>;
@@ -33,6 +42,7 @@ interface LogsPanelProps {
 /** LogsPanel 展示可搜索、分页和解析 JSON 的桥接主日志尾部。 */
 export function LogsPanel({
   logs,
+  tasks,
   loading,
   onRefresh,
   onClear,
@@ -47,6 +57,8 @@ export function LogsPanel({
   );
   /** expandedJsonLine 存储当前展开 JSON 的原始日志行号。 */
   const [expandedJsonLine, setExpandedJsonLine] = useState<number | null>(null);
+  /** activeCategory 存储当前选择的全部、系统或具体任务分类。 */
+  const [activeCategory, setActiveCategory] = useState(ALL_LOGS_CATEGORY);
 
   useEffect(() => {
     // 日志刷新后回到最近一页，避免历史展开状态让页面再次铺满。
@@ -91,24 +103,108 @@ export function LogsPanel({
           parsedJson === null
             ? rawMessage
             : rawMessage.slice(0, jsonStart).trim();
-        return { lineNumber, timestamp, message, json: parsedJson };
+        /** textTaskMatch 存储正文中显式的任务 ID。 */
+        const textTaskMatch = rawMessage.match(LOG_TASK_PATTERN);
+        /** jsonRecord 存储可安全读取 task_id 的 JSON 对象。 */
+        const jsonRecord =
+          parsedJson &&
+          typeof parsedJson === "object" &&
+          !Array.isArray(parsedJson)
+            ? (parsedJson as Record<string, unknown>)
+            : null;
+        /** directJsonTaskId 存储 JSON 顶层直接携带的任务 ID。 */
+        const directJsonTaskId =
+          typeof jsonRecord?.task_id === "string" ? jsonRecord.task_id : "";
+        /** actionValue 存储卡片回调里可能二次编码的动作 JSON。 */
+        const actionValue =
+          typeof jsonRecord?.action_value === "string"
+            ? jsonRecord.action_value
+            : "";
+        /** nestedTaskId 存储从二次编码动作中解析出的任务 ID。 */
+        let nestedTaskId = "";
+        if (actionValue) {
+          try {
+            /** actionRecord 存储卡片 action_value 解码后的对象。 */
+            const actionRecord = JSON.parse(actionValue) as unknown;
+            if (
+              actionRecord &&
+              typeof actionRecord === "object" &&
+              !Array.isArray(actionRecord) &&
+              typeof (actionRecord as Record<string, unknown>).task_id ===
+                "string"
+            ) {
+              nestedTaskId = String(
+                (actionRecord as Record<string, unknown>).task_id,
+              );
+            }
+          } catch {
+            nestedTaskId = "";
+          }
+        }
+        /** taskId 存储当前日志最终归属的任务 ID。 */
+        const taskId = (
+          textTaskMatch?.[1] ||
+          directJsonTaskId ||
+          nestedTaskId
+        ).toLocaleLowerCase();
+        return {
+          lineNumber,
+          timestamp,
+          message,
+          json: parsedJson,
+          taskId,
+        };
       })
       .filter(
         (entry) => entry.timestamp || entry.message || entry.json !== null,
       );
   }, [logs]);
 
+  /** taskCategories 存储任务快照和日志历史共同组成的任务分类。 */
+  const taskCategories = useMemo(() => {
+    /** taskTitles 存储当前任务 ID 到可读标题的映射。 */
+    const taskTitles = new Map(tasks.map((task) => [task.task_id, task.title]));
+    /** taskIds 存储当前与历史日志中出现的全部任务 ID。 */
+    const taskIds = new Set([
+      ...tasks.map((task) => task.task_id),
+      ...parsedEntries.map((entry) => entry.taskId).filter(Boolean),
+    ]);
+    return [...taskIds]
+      .sort((left, right) =>
+        left.localeCompare(right, undefined, { numeric: true }),
+      )
+      .map((taskId) => ({
+        key: taskId,
+        label: taskTitles.get(taskId)
+          ? `${taskId} · ${taskTitles.get(taskId)}`
+          : taskId,
+      }));
+  }, [parsedEntries, tasks]);
+
   /** filteredEntries 存储匹配查询关键字的日志行。 */
   const filteredEntries = useMemo(() => {
     /** normalizedQuery 存储忽略首尾空白和大小写的查询文本。 */
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    if (!normalizedQuery) return parsedEntries;
-    return parsedEntries.filter((entry) =>
+    /** categoryEntries 存储当前任务分类允许查询的日志。 */
+    const categoryEntries = parsedEntries.filter((entry) => {
+      if (activeCategory === ALL_LOGS_CATEGORY) return true;
+      if (activeCategory === SYSTEM_LOGS_CATEGORY) return !entry.taskId;
+      return entry.taskId === activeCategory;
+    });
+    if (!normalizedQuery) return categoryEntries;
+    return categoryEntries.filter((entry) =>
       `${entry.timestamp} ${entry.message} ${entry.json === null ? "" : JSON.stringify(entry.json)}`
         .toLocaleLowerCase()
         .includes(normalizedQuery),
     );
-  }, [parsedEntries, query]);
+  }, [activeCategory, parsedEntries, query]);
+
+  /** categoryItems 存储全部、系统及各任务的可点击日志分类。 */
+  const categoryItems = [
+    { key: ALL_LOGS_CATEGORY, label: "全部" },
+    { key: SYSTEM_LOGS_CATEGORY, label: "系统" },
+    ...taskCategories,
+  ];
 
   /** visibleEntries 存储本次实际渲染的搜索结果或最近日志。 */
   const visibleEntries = query.trim()
@@ -154,6 +250,16 @@ export function LogsPanel({
           </Button>
         </div>
       </div>
+      <Tabs
+        className="logs-categories"
+        activeKey={activeCategory}
+        items={categoryItems}
+        onChange={(category) => {
+          setActiveCategory(category);
+          setVisibleLineLimit(DEFAULT_VISIBLE_LOG_LINES);
+          setExpandedJsonLine(null);
+        }}
+      />
       <Spin spinning={loading}>
         {logs ? (
           <div className="logs-content">

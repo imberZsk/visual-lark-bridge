@@ -86,8 +86,12 @@ class CardInteractionTest(unittest.TestCase):
                     track_source_message=False,
                     clear_input=True,
                 )
+                # log_content 存储本轮流式任务写入的可分类日志。
+                log_content = app.bridge_log_path.read_text(encoding="utf-8")
 
         self.assertTrue(handled)
+        self.assertIn(f"task_id={task.task_id} 开始处理", log_content)
+        self.assertIn(f"task_id={task.task_id} 处理完成", log_content)
         # body_frames 存储写入对话正文元素的帧，meta_frames 存储写入元数据元素的帧。
         body_frames = [
             content
