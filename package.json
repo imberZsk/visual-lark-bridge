@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.2.1",
   "description": "可视化管理飞书与本地 Claude Code 桥接服务的 Electron 桌面应用",
+  "homepage": "https://imber-visual-docs.netlify.app/visual-lark-bridge",
   "productName": "Visual Lark Bridge",
   "author": "imber",
   "license": "MIT",
