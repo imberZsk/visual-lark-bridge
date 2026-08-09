@@ -28,6 +28,16 @@ from .models import LarkMessage
 import uuid
 
 
+def _is_lock_held_by_another_thread(lock: threading.RLock) -> bool:
+    """判断可重入锁是否正被其他线程占用；lock 是待探测的任务锁。"""
+    # Python 3.12 的 RLock 没有 locked()；非阻塞获取既兼容旧版本，也不会改变任务排队顺序。
+    lock_acquired = lock.acquire(blocking=False)
+    if lock_acquired:
+        lock.release()
+        return False
+    return True
+
+
 class BridgeActionMixin:
     def _create_custom_card(self, card: dict) -> Optional[str]:
         """创建任意静态交互卡片实体，成功返回 card_id。"""
@@ -286,7 +296,7 @@ class BridgeActionMixin:
         )
         if task.lock is None:
             task.lock = threading.RLock()
-        if task.lock.locked():
+        if _is_lock_held_by_another_thread(task.lock):
             self._log(f"task_id={task_id} 新问题已进入队列")
         with task.lock:
             return self._handle_event_streaming(
@@ -403,7 +413,7 @@ class BridgeActionMixin:
         )
         if task.lock is None:
             task.lock = threading.RLock()
-        if task.lock.locked():
+        if _is_lock_held_by_another_thread(task.lock):
             self._log(f"task_id={task_id} 卡片操作已进入队列 action={action}")
         with task.lock:
             self._handle_event_streaming(
