@@ -20,7 +20,6 @@ const GLOBAL_MESSAGE_CONFIG = {
   duration: 3,
   maxCount: 3,
   top: "50%",
-  styles: { listContent: { transform: "translateY(-50%)" } },
 };
 
 /** BridgeConsoleProps 描述控制台外观状态。 */
@@ -86,6 +85,7 @@ function BridgeConsole({ themeMode, onThemeChange }: BridgeConsoleProps) {
         {activeView === "logs" && (
           <LogsPage
             logs={controller.logs}
+            tasks={controller.snapshot.tasks}
             loading={controller.logsLoading}
             onRefresh={controller.refreshLogs}
             onClear={controller.clearLogs}
@@ -118,12 +118,7 @@ export default function App() {
             '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         },
         components: {
-          Layout: {
-            bodyBg: darkMode ? "#141414" : "#f5f5f5",
-            siderBg: darkMode ? "#141414" : "#ffffff",
-          },
           Menu: {
-            darkItemBg: "#141414",
             itemBorderRadius: 4,
           },
           Button: { borderRadius: 4 },

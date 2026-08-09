@@ -8,9 +8,141 @@
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://127.0.0.1:* http://127.0.0.1:*"
     />
     <title>Visual Lark Bridge</title>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        background: #f5f5f5;
+      }
+      @media (prefers-color-scheme: dark) {
+        html,
+        body,
+        #root {
+          background: #141414;
+        }
+      }
+      html[data-theme="light"],
+      html[data-theme="light"] body,
+      html[data-theme="light"] #root {
+        background: #f5f5f5;
+      }
+      html[data-theme="dark"],
+      html[data-theme="dark"] body,
+      html[data-theme="dark"] #root {
+        background: #141414;
+      }
+      /* React 首次提交前展示与 Ant Design Spin 同形态的轻量启动占位。 */
+      #startup-splash {
+        --startup-icon-size: 112px;
+        --startup-spinner-size: 20px;
+        --startup-spinner-item-size: 9px;
+        --startup-spinner-color: #1677ff;
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: inherit;
+        -webkit-app-region: drag;
+      }
+      @media (prefers-color-scheme: dark) {
+        #startup-splash {
+          --startup-spinner-color: #1668dc;
+        }
+      }
+      html[data-theme="light"] #startup-splash {
+        --startup-spinner-color: #1677ff;
+      }
+      html[data-theme="dark"] #startup-splash {
+        --startup-spinner-color: #1668dc;
+      }
+      #startup-splash .startup-splash__content {
+        position: relative;
+        width: var(--startup-icon-size);
+        height: var(--startup-icon-size);
+      }
+      #startup-splash img {
+        width: var(--startup-icon-size);
+        height: var(--startup-icon-size);
+        object-fit: contain;
+        user-select: none;
+        -webkit-user-drag: none;
+      }
+      #startup-splash .startup-splash__spinner {
+        position: absolute;
+        top: calc(100% + 16px);
+        left: 50%;
+        width: var(--startup-spinner-size);
+        height: var(--startup-spinner-size);
+        color: var(--startup-spinner-color);
+        transform: translateX(-50%) rotate(45deg);
+        animation: startup-spinner-rotate 1.2s linear infinite;
+      }
+      #startup-splash .startup-splash__spinner-item {
+        position: absolute;
+        width: var(--startup-spinner-item-size);
+        height: var(--startup-spinner-item-size);
+        border-radius: 100%;
+        background: currentColor;
+        opacity: 0.3;
+        transform: scale(0.75);
+        animation: startup-spinner-item 1s linear infinite alternate;
+      }
+      #startup-splash .startup-splash__spinner-item:nth-child(1) {
+        top: 0;
+        left: 0;
+      }
+      #startup-splash .startup-splash__spinner-item:nth-child(2) {
+        top: 0;
+        right: 0;
+        animation-delay: 0.4s;
+      }
+      #startup-splash .startup-splash__spinner-item:nth-child(3) {
+        right: 0;
+        bottom: 0;
+        animation-delay: 0.8s;
+      }
+      #startup-splash .startup-splash__spinner-item:nth-child(4) {
+        bottom: 0;
+        left: 0;
+        animation-delay: 1.2s;
+      }
+      @keyframes startup-spinner-rotate {
+        to {
+          transform: translateX(-50%) rotate(405deg);
+        }
+      }
+      @keyframes startup-spinner-item {
+        to {
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #startup-splash .startup-splash__spinner,
+        #startup-splash .startup-splash__spinner-item {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        id="startup-splash"
+        role="status"
+        aria-label="Visual Lark Bridge 正在启动"
+      >
+        <div class="startup-splash__content">
+          <img src="./startup-icon.png" alt="" aria-hidden="true" />
+          <span class="startup-splash__spinner" aria-hidden="true">
+            <i class="startup-splash__spinner-item"></i>
+            <i class="startup-splash__spinner-item"></i>
+            <i class="startup-splash__spinner-item"></i>
+            <i class="startup-splash__spinner-item"></i>
+          </span>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -12,6 +12,12 @@ import { registerIpcHandlers } from "./ipcHandlers.js";
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 /** projectRoot 存储开发源码或打包 app.asar 根目录。 */
 const projectRoot = path.resolve(currentDirectory, "..");
+/** DEVELOPMENT_APP_ICON_PATH 存储开发态窗口和 macOS Dock 使用的高清项目图标路径。 */
+const DEVELOPMENT_APP_ICON_PATH = path.join(
+  projectRoot,
+  "build",
+  "app-icon.png",
+);
 /** APP_DATA_DIRECTORY 存储跨版本稳定的用户数据目录名称。 */
 const APP_DATA_DIRECTORY = "visual-lark-bridge";
 /** isDevelopment 标记当前是否连接 Vite 开发服务器。 */
@@ -50,6 +56,7 @@ async function createWindow() {
     show: false,
     titleBarStyle: "hiddenInset",
     backgroundColor: "#f5f7f8",
+    icon: app.isPackaged ? undefined : DEVELOPMENT_APP_ICON_PATH,
     webPreferences: {
       preload: preloadPath,
       contextIsolation: true,
@@ -57,7 +64,10 @@ async function createWindow() {
       sandbox: true,
     },
   });
-  window.once("ready-to-show", () => window.show());
+  window.once("ready-to-show", () => {
+    // 冒烟和 E2E 仍使用真实渲染进程，但不得显示窗口或抢占用户焦点。
+    if (!isSmokeTest && !isE2eTest) window.show();
+  });
   window.on("close", (event) => {
     if (!isQuitting) {
       event.preventDefault();
@@ -115,6 +125,12 @@ function createTray() {
 /** bootstrap 在 Electron ready 后初始化服务、IPC、窗口和菜单栏。 */
 async function bootstrap() {
   if (isSmokeTest) console.log("SMOKE_STAGE:after-ready");
+  // macOS E2E 隐藏 Dock，并跳过托盘图标，避免后台测试影响用户桌面。
+  if (isE2eTest) app.dock?.hide();
+  // Bug 修复：未打包 Electron 默认显示框架图标；开发态显式设置项目图标，打包态继续使用安装包资源。
+  if (process.platform === "darwin" && !app.isPackaged && !isE2eTest) {
+    app.dock?.setIcon(DEVELOPMENT_APP_ICON_PATH);
+  }
   /** userDataPath 存储所有可变配置、日志与工作区的目录。 */
   const userDataPath = app.getPath("userData");
   /** configStore 存储配置持久化服务。 */
@@ -142,7 +158,7 @@ async function bootstrap() {
   });
   mainWindow = await createWindow();
   if (isSmokeTest) console.log("SMOKE_STAGE:window-loaded");
-  tray = createTray();
+  if (!isE2eTest) tray = createTray();
 
   if (isSmokeTest) {
     /** preloadReady 存储生产窗口是否成功暴露安全 API。 */
@@ -269,7 +285,8 @@ app
 app.on("activate", async () => {
   if (!mainWindow || mainWindow.isDestroyed())
     mainWindow = await createWindow();
-  mainWindow.show();
+  // E2E 期间 macOS activate 事件也不能重新显示隐藏的测试窗口。
+  if (!isSmokeTest && !isE2eTest) mainWindow.show();
 });
 app.on("before-quit", async () => {
   isQuitting = true;

@@ -11,6 +11,8 @@ const config = tseslint.config(
       "release/**",
       "build/**",
       "node_modules/**",
+      "playwright-report/**",
+      "test-results/**",
       ".venv/**",
     ],
   },

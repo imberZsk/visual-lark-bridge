@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import os
 from pathlib import Path
 
+from lark_bridge.cli import InstanceAlreadyRunningError
 from lark_bridge.cli import acquire_instance_lock
 
 
@@ -20,8 +22,12 @@ class InstanceLockTest(unittest.TestCase):
             # first_lock 模拟首个正在运行的桥接进程持有的文件锁。
             first_lock = acquire_instance_lock(log_dir)
             try:
-                with self.assertRaisesRegex(RuntimeError, "已有桥接服务正在运行"):
+                with self.assertRaisesRegex(
+                    InstanceAlreadyRunningError,
+                    rf"已有桥接服务正在运行（pid={os.getpid()}）",
+                ) as raised:
                     acquire_instance_lock(log_dir)
+                self.assertEqual(raised.exception.pid, os.getpid())
             finally:
                 first_lock.close()
 

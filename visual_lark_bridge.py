@@ -10,6 +10,11 @@ from lark_bridge.task_manager import *
 from lark_bridge.lark_api import *
 from lark_bridge.claude_protocol import *
 from lark_bridge.consumers import *
+from lark_bridge.news_config import *
+from lark_bridge.news_digest import *
+from lark_bridge.news_sources import *
+from lark_bridge.news_summarizer import *
+from lark_bridge.news_scheduler import *
 from lark_bridge.app import *
 from lark_bridge.cli import main
 

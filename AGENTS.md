@@ -9,4 +9,6 @@
 - [运维规范](.agents/operations.md)
 - [踩坑记录](.agents/pitfalls.md)
 - [安全约束](.agents/security.md)
+- [样式规范](.agents/style-standards.md)
 - [测试规范](.agents/testing-standards.md)
+- [UI 与交互规范](.agents/ui-standards.md)

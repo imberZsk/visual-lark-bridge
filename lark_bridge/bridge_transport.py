@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
+import urllib.error
+import urllib.request
 from typing import Optional
 
 
@@ -14,6 +17,7 @@ from .lark_commands import build_lark_finish_stream_args
 from .lark_commands import build_lark_replace_element_args
 from .lark_commands import build_lark_reply_args
 from .lark_commands import build_lark_send_card_args
+from .lark_commands import build_lark_send_chat_message_args
 from .lark_commands import build_lark_stream_content_args
 from .lark_commands import build_lark_stream_mode_args
 from .lark_commands import build_lark_update_message_args
@@ -23,6 +27,61 @@ from datetime import datetime
 
 
 class BridgeTransportMixin:
+    def _send_webhook_message(self, webhook_url: str, markdown: str) -> bool:
+        """向飞书自定义机器人 Webhook 发送新闻文本，不在日志中暴露凭据地址。"""
+        if self.args.dry_run:
+            self._log("[dry-run] 将通过飞书 Webhook 推送新闻")
+            return True
+        # payload 存储飞书自定义机器人文本消息请求体。
+        payload = json.dumps(
+            {"msg_type": "text", "content": {"text": markdown}},
+            ensure_ascii=False,
+        ).encode("utf-8")
+        # request 存储仅发往已由配置边界校验的飞书 Webhook 请求。
+        request = urllib.request.Request(
+            webhook_url,
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        try:
+            # response 存储飞书机器人返回的 JSON 结果。
+            with urllib.request.urlopen(request, timeout=15) as result:
+                response = json.loads(result.read().decode("utf-8"))
+        except (OSError, urllib.error.URLError, json.JSONDecodeError):
+            # HTTPError 的字符串可能包含完整请求 URL；固定日志避免失败时泄露机器人凭据。
+            self._log("新闻 Webhook 推送失败：网络请求或响应解析异常")
+            return False
+        # success 兼容飞书自定义机器人新旧两种成功响应字段。
+        success = response.get("code") == 0 or response.get("StatusCode") == 0
+        if not success:
+            self._log("新闻 Webhook 推送失败：飞书返回非成功状态")
+        return success
+
+    def _send_chat_message(self, chat_id: str, markdown: str) -> bool:
+        """向指定会话主动发送 Markdown；chat_id 不依赖任何源消息。"""
+        if self.args.dry_run:
+            self._log(f"[dry-run] 将主动推送到 {chat_id}: {markdown}")
+            return True
+        # completed 存储主动发送命令结果。
+        completed = subprocess.run(
+            build_lark_send_chat_message_args(
+                chat_id,
+                markdown,
+                identity=self.args.reply_identity,
+                profile=self.args.lark_profile,
+            ),
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            self._log(
+                f"主动推送失败 code={completed.returncode} stderr={completed.stderr.strip()}"
+            )
+            return False
+        return True
+
     def _create_stream_card(
         self,
         task_id: str = "",

@@ -16,6 +16,15 @@ export const DEFAULT_SNAPSHOT = {
     claudeTimeout: 180,
     autoStartBridge: true,
     theme: "dark",
+    news: {
+      enabled: false,
+      delivery_type: "chat",
+      chat_id: "",
+      webhook_url: "",
+      times: ["09:07"],
+      sources: [{ name: "Hacker News", url: "https://hnrss.org/frontpage" }],
+      max_items: 8,
+    },
   },
   service: { state: "stopped", pid: null, startedAt: null, lastError: "" },
   tools: {

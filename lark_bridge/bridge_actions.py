@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import threading
 import time
 from typing import Optional
 
@@ -25,6 +26,16 @@ from .messages import should_upgrade_task_title
 from .messages import suggest_task_title
 from .models import LarkMessage
 import uuid
+
+
+def _is_lock_held_by_another_thread(lock: threading.RLock) -> bool:
+    """判断可重入锁是否正被其他线程占用；lock 是待探测的任务锁。"""
+    # Python 3.12 的 RLock 没有 locked()；非阻塞获取既兼容旧版本，也不会改变任务排队顺序。
+    lock_acquired = lock.acquire(blocking=False)
+    if lock_acquired:
+        lock.release()
+        return False
+    return True
 
 
 class BridgeActionMixin:
@@ -283,12 +294,17 @@ class BridgeActionMixin:
             text=normalized_question,
             chat_type="p2p",
         )
-        return self._handle_event_streaming(
-            synthetic_message,
-            task_id=task_id,
-            track_source_message=False,
-            clear_input=True,
-        )
+        if task.lock is None:
+            task.lock = threading.RLock()
+        if _is_lock_held_by_another_thread(task.lock):
+            self._log(f"task_id={task_id} 新问题已进入队列")
+        with task.lock:
+            return self._handle_event_streaming(
+                synthetic_message,
+                task_id=task_id,
+                track_source_message=False,
+                clear_input=True,
+            )
 
     def _show_history_page(self, task_id: str, older: bool) -> bool:
         """在同一任务卡内切换历史页；task_id 指定任务，older 为真时向更早一页移动。"""
@@ -395,11 +411,16 @@ class BridgeActionMixin:
             text=question,
             chat_type="p2p",
         )
-        self._handle_event_streaming(
-            synthetic_message,
-            task_id=task_id,
-            track_source_message=False,
-        )
+        if task.lock is None:
+            task.lock = threading.RLock()
+        if _is_lock_held_by_another_thread(task.lock):
+            self._log(f"task_id={task_id} 卡片操作已进入队列 action={action}")
+        with task.lock:
+            self._handle_event_streaming(
+                synthetic_message,
+                task_id=task_id,
+                track_source_message=False,
+            )
 
     def _open_local_shortcut(self, action: str, task_id: str) -> None:
         """在当前 Mac 打开任务目录、日志目录或生成文件目录。"""

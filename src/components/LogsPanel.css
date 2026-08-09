@@ -1,0 +1,118 @@
+/* 日志页工具栏、分类和代码画布由日志组件独立管理。 */
+.logs-panel .logs-toolbar {
+  display: grid;
+  gap: var(--space-sm);
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-bottom: var(--space-sm);
+}
+
+.logs-panel .logs-toolbar .ant-input-search {
+  max-width: 520px;
+  min-width: 0;
+  width: min(100%, 520px);
+}
+
+.logs-panel .panel-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.logs-panel .logs-categories {
+  margin-bottom: var(--space-xs);
+}
+
+.logs-panel .logs-categories .ant-tabs-nav {
+  margin-bottom: 0;
+}
+
+.logs-panel .logs-content {
+  min-height: 340px;
+}
+
+.logs-panel .logs-summary {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  margin-bottom: var(--space-xs);
+}
+
+.logs-panel .log-list {
+  background: var(--log-canvas-bg);
+  border: 1px solid var(--ant-color-border);
+  border-radius: 4px;
+  color: var(--log-canvas-text);
+  font:
+    11px/1.55 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    monospace;
+  max-height: calc(100vh - 235px);
+  overflow: auto;
+}
+
+.logs-panel .log-entry {
+  border-bottom: 1px solid var(--log-canvas-border);
+}
+
+.logs-panel .log-entry:last-child {
+  border-bottom: 0;
+}
+
+.logs-panel .log-entry-main {
+  align-items: start;
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 28px;
+  min-height: 32px;
+  padding: var(--space-xs);
+}
+
+.logs-panel .log-entry-main time {
+  color: var(--log-canvas-muted);
+}
+
+.logs-panel .log-entry-main span {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.logs-panel .log-entry-main .ant-btn,
+.logs-panel .log-json-view > .ant-btn {
+  color: var(--log-canvas-muted);
+}
+
+.logs-panel .log-json-view {
+  background: var(--log-json-bg);
+  border-top: 1px solid var(--log-canvas-border);
+  position: relative;
+}
+
+.logs-panel .log-json-view > .ant-btn {
+  position: absolute;
+  right: var(--space-2xs);
+  top: var(--space-2xs);
+  z-index: 1;
+}
+
+.logs-panel .log-json-view pre {
+  color: var(--log-canvas-text);
+  margin: 0;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-sm) 40px var(--space-sm) var(--space-sm);
+  white-space: pre-wrap;
+}
+
+.logs-panel .load-more-logs {
+  display: block;
+  margin: var(--space-sm) auto 0;
+}
+
+@media (max-width: 860px) {
+  .logs-panel .logs-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .logs-panel .panel-actions {
+    justify-content: flex-start;
+  }
+}

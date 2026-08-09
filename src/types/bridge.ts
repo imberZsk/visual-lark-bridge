@@ -8,6 +8,24 @@ export interface BridgeConfig {
   claudeTimeout: number;
   autoStartBridge: boolean;
   theme: "light" | "dark";
+  news: NewsConfig;
+}
+
+/** NewsSourceConfig 描述桌面端可编辑的单个 RSS 信息源。 */
+export interface NewsSourceConfig {
+  name: string;
+  url: string;
+}
+
+/** NewsConfig 描述 AI 新闻主动推送配置。 */
+export interface NewsConfig {
+  enabled: boolean;
+  delivery_type: "chat" | "webhook";
+  chat_id: string;
+  webhook_url: string;
+  times: string[];
+  sources: NewsSourceConfig[];
+  max_items: number;
 }
 
 /** ServiceStatus 描述桥接子进程当前状态。 */

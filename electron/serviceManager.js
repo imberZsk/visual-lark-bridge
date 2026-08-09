@@ -9,6 +9,12 @@ const STOP_TIMEOUT_MS = 5000;
 const PROCESS_GROUP_CLEANUP_GRACE_MS = 250;
 /** LOG_TAIL_LIMIT 存储控制台单次读取的最大日志字符数。 */
 const LOG_TAIL_LIMIT = 50000;
+/** INSTANCE_ALREADY_RUNNING_EXIT_CODE 存储 Python 报告已有桥接实例的稳定退出码。 */
+const INSTANCE_ALREADY_RUNNING_EXIT_CODE = 73;
+/** INSTANCE_PID_PATTERN 匹配 Python 锁冲突信息中的现有桥接 PID。 */
+const INSTANCE_PID_PATTERN = /已有桥接服务正在运行（pid=(\d+)）/;
+/** PROCESS_EXIT_POLL_MS 存储接管进程退出状态的轮询间隔。 */
+const PROCESS_EXIT_POLL_MS = 100;
 
 /** expandHomePath 展开配置路径开头的波浪号；value 是用户配置路径。 */
 export function expandHomePath(value, homePath) {
@@ -28,6 +34,37 @@ export function signalProcessTree(child, signal) {
   }
 }
 
+/** extractExistingBridgePid 从锁冲突 stderr 中解析可接管的桥接 PID。 */
+export function extractExistingBridgePid(stderrText) {
+  /** match 存储稳定锁冲突格式的正则匹配结果。 */
+  const match = String(stderrText || "").match(INSTANCE_PID_PATTERN);
+  if (!match?.[1]) return null;
+  /** pid 存储转换后的现有桥接进程号。 */
+  const pid = Number(match[1]);
+  return Number.isSafeInteger(pid) && pid > 0 ? pid : null;
+}
+
+/** isProcessRunning 判断 PID 当前是否仍可被操作系统找到。 */
+export function isProcessRunning(pid) {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** waitForProcessExit 等待已接管桥接退出；pid 是进程号，timeoutMs 是最长等待时间。 */
+async function waitForProcessExit(pid, timeoutMs) {
+  /** deadline 存储停止等待的绝对截止时间。 */
+  const deadline = Date.now() + timeoutMs;
+  while (isProcessRunning(pid) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, PROCESS_EXIT_POLL_MS));
+  }
+  return !isProcessRunning(pid);
+}
+
 /** ServiceManager 管理当前桌面应用拥有的 Python 桥接子进程。 */
 export class ServiceManager extends EventEmitter {
   /** 创建服务管理器；options 提供运行路径和打包状态。 */
@@ -37,6 +74,8 @@ export class ServiceManager extends EventEmitter {
     this.options = options;
     /** this.child 存储当前桥接子进程。 */
     this.child = null;
+    /** this.adoptedPid 存储从同一运行目录锁接管的既有桥接进程号。 */
+    this.adoptedPid = null;
     /** this.startedAt 存储当前进程启动时间。 */
     this.startedAt = null;
     /** this.lastError 存储最近一次启动或退出错误。 */
@@ -46,8 +85,13 @@ export class ServiceManager extends EventEmitter {
   /** 返回当前服务状态快照。 */
   status() {
     return {
-      state: this.child ? "running" : this.lastError ? "error" : "stopped",
-      pid: this.child?.pid ?? null,
+      state:
+        this.child || this.adoptedPid
+          ? "running"
+          : this.lastError
+            ? "error"
+            : "stopped",
+      pid: this.child?.pid ?? this.adoptedPid,
       startedAt: this.startedAt,
       lastError: this.lastError,
     };
@@ -86,6 +130,10 @@ export class ServiceManager extends EventEmitter {
   /** 启动桥接服务；config 是已校验配置，runtimePath 是外部工具 PATH。 */
   async start(config, runtimePath) {
     if (this.child) return this.status();
+    if (this.adoptedPid && isProcessRunning(this.adoptedPid)) {
+      return this.status();
+    }
+    this.adoptedPid = null;
     /** runtimePaths 存储本次启动需要的可写目录。 */
     const runtimePaths = {
       logs: path.join(this.options.userDataPath, "logs"),
@@ -113,6 +161,8 @@ export class ServiceManager extends EventEmitter {
       expandHomePath(config.larkConfigPath, this.options.homePath),
       "--event-gateway",
       launchTarget.gatewayPath,
+      "--news-config",
+      path.join(this.options.userDataPath, "config.json"),
       "--claude-timeout",
       String(config.claudeTimeout),
       "--provider",
@@ -136,8 +186,11 @@ export class ServiceManager extends EventEmitter {
     });
     this.child = child;
     this.startedAt = new Date().toISOString();
+    /** stderrOutput 累积本次启动 stderr，避免锁冲突信息被数据块边界截断。 */
+    let stderrOutput = "";
     child.stderr.on("data", (chunk) => {
-      this.lastError = String(chunk).trim().slice(-1000);
+      stderrOutput = `${stderrOutput}${String(chunk)}`.slice(-4000);
+      this.lastError = stderrOutput.trim().slice(-1000);
       this.emit("changed", this.status());
     });
     child.once("error", (error) => {
@@ -145,6 +198,17 @@ export class ServiceManager extends EventEmitter {
     });
     child.once("exit", (code, signal) => {
       this.child = null;
+      if (code === INSTANCE_ALREADY_RUNNING_EXIT_CODE) {
+        /** existingPid 存储 Python 锁冲突信息中经过校验的现有服务 PID。 */
+        const existingPid = extractExistingBridgePid(stderrOutput);
+        if (existingPid && isProcessRunning(existingPid)) {
+          this.adoptedPid = existingPid;
+          this.startedAt = null;
+          this.lastError = "";
+          this.emit("changed", this.status());
+          return;
+        }
+      }
       this.startedAt = null;
       if (code && code !== 0) {
         const exitReason = `桥接进程退出（code=${code}, signal=${signal ?? "none"}）`;
@@ -162,6 +226,31 @@ export class ServiceManager extends EventEmitter {
   async stop() {
     /** child 存储停止操作开始时的进程引用。 */
     const child = this.child;
+    if (!child && this.adoptedPid) {
+      /** adoptedPid 存储本次需要停止的已接管桥接进程号。 */
+      const adoptedPid = this.adoptedPid;
+      /** adoptedProcess 提供 signalProcessTree 所需的最小进程接口。 */
+      const adoptedProcess = {
+        pid: adoptedPid,
+        kill: (signal) => {
+          try {
+            process.kill(adoptedPid, signal);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+      };
+      signalProcessTree(adoptedProcess, "SIGTERM");
+      /** exited 标记已接管进程是否在正常停止期限内退出。 */
+      const exited = await waitForProcessExit(adoptedPid, STOP_TIMEOUT_MS);
+      if (!exited) signalProcessTree(adoptedProcess, "SIGKILL");
+      this.adoptedPid = null;
+      this.startedAt = null;
+      this.lastError = "";
+      this.emit("changed", this.status());
+      return this.status();
+    }
     if (!child) return this.status();
     /** exitPromise 存储进程退出或超时强制结束的等待逻辑。 */
     const exitPromise = new Promise((resolve) => {
