@@ -1,3 +1,4 @@
+import { Divider } from "antd";
 import { DiagnosticsPanel } from "../components/DiagnosticsPanel";
 import { ServiceOverview } from "../components/ServiceOverview";
 import type { BridgeSnapshot } from "../types/bridge";
@@ -39,4 +40,3 @@ export function ServicePage(props: ServicePageProps) {
     </section>
   );
 }
-import { Divider } from "antd";

@@ -22,6 +22,20 @@ from .config import DEFAULT_WORKSPACE
 
 # INSTANCE_LOCK_FILE 存储同一运行目录内桥接单实例锁的文件名。
 INSTANCE_LOCK_FILE = "bridge.lock"
+# INSTANCE_ALREADY_RUNNING_EXIT_CODE 存储已有桥接实例时返回给桌面管理器的稳定退出码。
+INSTANCE_ALREADY_RUNNING_EXIT_CODE = 73
+
+
+class InstanceAlreadyRunningError(RuntimeError):
+    """表示当前日志目录的桥接锁已由另一个进程持有。"""
+
+    def __init__(self, pid: Optional[int]) -> None:
+        """创建锁冲突错误；pid 是锁文件记录的现有桥接进程号。"""
+        # self.pid 存储可供桌面端接管状态的现有桥接进程号。
+        self.pid = pid
+        # pid_text 存储错误信息中的稳定进程标识，缺失时明确标记 unknown。
+        pid_text = str(pid) if pid is not None else "unknown"
+        super().__init__(f"同一运行目录已有桥接服务正在运行（pid={pid_text}）")
 
 
 def acquire_instance_lock(log_dir: Path) -> IO[str]:
@@ -34,8 +48,17 @@ def acquire_instance_lock(log_dir: Path) -> IO[str]:
     try:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError as exc:
+        # existing_pid_text 存储锁持有者写入的原始 PID 文本。
+        lock_file.seek(0)
+        existing_pid_text = lock_file.read().strip()
+        # existing_pid 存储校验后的正整数 PID，损坏或旧格式锁文件回退为空。
+        existing_pid = (
+            int(existing_pid_text)
+            if existing_pid_text.isdigit() and int(existing_pid_text) > 0
+            else None
+        )
         lock_file.close()
-        raise RuntimeError("同一运行目录已有桥接服务正在运行") from exc
+        raise InstanceAlreadyRunningError(existing_pid) from exc
     lock_file.seek(0)
     lock_file.truncate()
     lock_file.write(f"{os.getpid()}\n")
@@ -123,6 +146,9 @@ def main() -> int:
     except KeyboardInterrupt:
         print("收到中断，退出。", file=sys.stderr)
         return 130
+    except InstanceAlreadyRunningError as exc:
+        print(f"桥接服务已在运行：{exc}", file=sys.stderr)
+        return INSTANCE_ALREADY_RUNNING_EXIT_CODE
     except Exception as exc:
         print(f"桥接服务异常：{exc}", file=sys.stderr)
         return 1

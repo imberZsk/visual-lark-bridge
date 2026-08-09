@@ -1,0 +1,116 @@
+/* 服务页的状态、诊断和任务管理样式仅在服务工作区内生效。 */
+.service-page .section-heading {
+  align-items: center;
+  display: flex;
+  gap: var(--space-md);
+  justify-content: space-between;
+  margin-bottom: var(--space-md);
+}
+
+.service-page .section-heading > div {
+  align-items: center;
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.service-page .section-heading h2,
+.service-page .section-heading h3 {
+  font-size: 14px;
+  font-weight: 650;
+  margin: 0;
+}
+
+.service-page .ant-alert {
+  margin-bottom: var(--space-sm);
+}
+
+.service-overview .ant-descriptions {
+  border-top: 1px solid var(--ant-color-border-secondary);
+  padding-top: var(--space-sm);
+}
+
+.service-page > .ant-divider {
+  border-color: var(--ant-color-border-secondary);
+  margin: var(--space-md) 0;
+}
+
+.diagnostics-panel .section-heading {
+  margin-bottom: var(--space-sm);
+}
+
+.diagnostics-list {
+  margin-bottom: var(--space-sm);
+}
+
+.task-status-section {
+  margin-top: var(--space-md);
+}
+
+.service-page .task-status-heading {
+  margin-bottom: var(--space-xs);
+}
+
+.task-summary {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-drawer-list {
+  display: grid;
+}
+
+.task-drawer-row {
+  align-items: center;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  display: grid;
+  gap: var(--space-sm);
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 72px;
+  padding: var(--space-sm) 0;
+}
+
+.task-drawer-main,
+.task-drawer-title {
+  min-width: 0;
+}
+
+.task-drawer-title {
+  align-items: baseline;
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.task-drawer-title strong {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-drawer-title span,
+.task-drawer-question {
+  color: var(--ant-color-text-secondary);
+  font-size: 11px;
+}
+
+.task-drawer-question {
+  margin-top: var(--space-2xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-turns {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .service-page .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

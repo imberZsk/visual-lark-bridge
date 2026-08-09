@@ -18,6 +18,7 @@ import {
   UnorderedListOutlined,
 } from "@ant-design/icons";
 import type { BridgeSnapshot } from "../types/bridge";
+import "./ServiceOverview.css";
 
 /** ServiceOverviewProps 描述服务总览组件输入。 */
 interface ServiceOverviewProps {

@@ -14,6 +14,7 @@ import { DeleteOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 import type { BridgeConfig } from "../types/bridge";
+import "./SettingsPanel.css";
 
 /** SettingsPanelProps 描述设置表单输入。 */
 interface SettingsPanelProps {
@@ -109,7 +110,11 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
             ]}
           >
             {/* InputNumber 的 min/max 不会阻止键盘输入越界值，表单规则负责阻止非法配置提交。 */}
-            <InputNumber min={30} max={1800} />
+            <InputNumber
+              className="settings-number-input"
+              min={30}
+              max={1800}
+            />
           </Form.Item>
         </div>
         <Divider>AI 新闻推送</Divider>
@@ -206,7 +211,12 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
                       />
                     </Space>
                   ))}
-                  <Button icon={<PlusOutlined />} onClick={() => add("09:00")}>
+                  <Button
+                    block
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    onClick={() => add("09:00")}
+                  >
                     添加时刻
                   </Button>
                   <Form.ErrorList errors={errors} />
@@ -219,7 +229,7 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
             label="单次新闻条数"
             rules={[{ type: "number", min: 1, max: 20 }]}
           >
-            <InputNumber min={1} max={20} />
+            <InputNumber className="settings-number-input" min={1} max={20} />
           </Form.Item>
         </div>
         <Form.List
@@ -263,6 +273,8 @@ export function SettingsPanel({ config, saving, onSave }: SettingsPanelProps) {
                 </Space>
               ))}
               <Button
+                block
+                type="dashed"
                 icon={<PlusOutlined />}
                 onClick={() => add({ name: "", url: "" })}
               >

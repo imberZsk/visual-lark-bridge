@@ -7,6 +7,7 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import type { BridgeTask } from "../types/bridge";
+import "./LogsPanel.css";
 
 /** DEFAULT_VISIBLE_LOG_LINES 存储首次打开日志页时展示的最近日志行数。 */
 const DEFAULT_VISIBLE_LOG_LINES = 100;

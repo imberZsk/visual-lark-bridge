@@ -1,0 +1,73 @@
+/* 设置表单以两列为默认布局，同级字段保持 12px 行距和 16px 列距。 */
+.settings-panel .form-grid {
+  display: grid;
+  gap: 0 var(--space-md);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-panel .form-grid .ant-form-item {
+  margin-bottom: var(--space-sm);
+}
+
+.settings-panel .settings-number-input {
+  width: 100%;
+}
+
+.settings-panel .setting-toggle {
+  align-items: center;
+  color: var(--ant-color-text-secondary);
+  display: flex;
+  font-size: 12px;
+  gap: var(--space-xs);
+}
+
+.settings-panel .news-enabled-toggle {
+  margin-bottom: var(--space-sm);
+}
+
+.settings-panel .news-config-grid {
+  margin-top: var(--space-2xs);
+}
+
+.settings-panel .news-times {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.settings-panel .news-time-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 32px;
+  width: 100%;
+}
+
+.settings-panel .news-time-row .ant-picker {
+  width: 100%;
+}
+
+.settings-panel .news-sources {
+  margin-bottom: var(--space-md);
+}
+
+.settings-panel .news-source-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.35fr) minmax(280px, 1fr) 32px;
+  width: 100%;
+}
+
+.settings-panel .news-source-row .ant-form-item {
+  margin-bottom: var(--space-xs);
+}
+
+.settings-panel .form-footer {
+  align-items: center;
+  border-top: 1px solid var(--ant-color-border-secondary);
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--space-sm);
+}
+
+@media (max-width: 860px) {
+  .settings-panel .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
